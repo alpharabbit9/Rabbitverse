@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { NAV, SETTINGS_NAV, type NavItem } from "@/lib/nav";
 import { profile } from "@/lib/sample-data";
 import { Icon } from "@/components/icon";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeOrb } from "@/components/theme-orb";
 import { cn } from "@/lib/utils";
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
@@ -39,13 +39,13 @@ export function Sidebar() {
   const xpPct = Math.round((profile.xp / profile.xpToNext) * 100);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-bg-secondary/40 backdrop-blur-xl lg:flex">
+    <aside className="glass-strong fixed inset-y-4 left-4 z-40 hidden w-64 flex-col overflow-hidden rounded-[28px] lg:flex">
       <div className="flex items-center gap-3 px-5 py-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Rabbit Verse" className="size-10 rounded-xl" />
+        <img src="/logo-mark.png" alt="Rabbit Verse" className="size-11 rounded-2xl object-cover shadow-[0_6px_18px_-6px_rgba(91,124,250,0.55)] ring-1 ring-white/10" />
         <div className="leading-tight">
-          <div className="text-[15px] font-semibold tracking-tight">Rabbit Verse</div>
-          <div className="text-xs text-fg-muted">Your Life OS</div>
+          <div className="font-display text-[19px] font-semibold tracking-tight">Rabbit Verse</div>
+          <div className="text-[11px] uppercase tracking-[0.18em] text-fg-muted">Forge Your Legacy</div>
         </div>
       </div>
 
@@ -69,15 +69,13 @@ export function Sidebar() {
               <div className="h-full rounded-full bg-gradient-to-r from-accent-purple to-accent-blue" style={{ width: `${xpPct}%` }} />
             </div>
           </div>
+          <ThemeOrb size={34} className="self-center" />
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="glass flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
-            <Icon name="Flame" size={16} style={{ color: "var(--accent-orange)" }} />
-            <span className="font-semibold">{profile.streakDays}</span>
-            <span className="text-xs text-fg-muted">day streak</span>
-          </div>
-          <ThemeToggle />
+        <div className="glass flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+          <Icon name="Flame" size={16} style={{ color: "var(--accent-orange)" }} />
+          <span className="font-semibold">{profile.streakDays}</span>
+          <span className="text-xs text-fg-muted">day streak</span>
         </div>
       </div>
     </aside>

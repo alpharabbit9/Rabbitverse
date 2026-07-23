@@ -2,7 +2,7 @@
 
 import { profile } from "@/lib/sample-data";
 import { Panel } from "@/components/dashboard/panel";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeOrb } from "@/components/theme-orb";
 import { Icon } from "@/components/icon";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { signOut } from "@/app/auth/actions";
@@ -34,7 +34,7 @@ export default function SettingsPage() {
         <Panel title="Appearance">
           <div className="flex items-center justify-between py-3">
             <span className="text-sm text-fg-secondary">Theme</span>
-            <ThemeToggle />
+            <ThemeOrb />
           </div>
           <p className="text-xs text-fg-muted">Dark is Rabbit Verse&apos;s home. A separate, airy light theme is available too.</p>
         </Panel>

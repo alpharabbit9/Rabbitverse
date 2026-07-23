@@ -48,9 +48,9 @@ export function LoginExperience({
           <span className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-accent-purple/50 to-accent-blue/40 blur-2xl" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo.png"
+            src="/logo-mark.png"
             alt="Rabbit Verse"
-            className="animate-float relative size-24 rounded-[26px] ring-1 ring-white/15 shadow-[0_20px_50px_-12px_rgba(139,92,246,0.55)]"
+            className="animate-float relative size-24 rounded-[26px] object-cover ring-1 ring-white/15 shadow-[0_20px_50px_-12px_rgba(139,92,246,0.55)]"
           />
         </motion.div>
 
@@ -58,7 +58,7 @@ export function LoginExperience({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="mt-6 bg-gradient-to-r from-fg via-fg to-accent-purple bg-clip-text text-3xl font-bold tracking-tight text-transparent"
+          className="font-display mt-6 bg-gradient-to-r from-fg via-fg to-accent-purple bg-clip-text text-4xl font-semibold tracking-tight text-transparent"
         >
           Rabbit Verse
         </motion.h1>
