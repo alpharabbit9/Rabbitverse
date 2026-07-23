@@ -33,12 +33,12 @@ export function Rabbit({
 
   const wrap =
     state === "sleeping"
-      ? { animate: { y: [0, -2, 0] }, transition: { duration: 4, repeat: Infinity, ease: "easeInOut" } }
+      ? { animate: { y: [0, -2, 0] }, transition: { duration: 4, repeat: Infinity, ease: "easeInOut" as const } }
       : state === "walking"
-        ? { animate: { y: [0, -6, 0] }, transition: { duration: 3, repeat: Infinity, ease: "easeInOut" } }
+        ? { animate: { y: [0, -6, 0] }, transition: { duration: 3, repeat: Infinity, ease: "easeInOut" as const } }
         : state === "running"
-          ? { animate: { x: [-3, 3, -3], y: [0, -4, 0] }, transition: { duration: 0.7, repeat: Infinity, ease: "easeInOut" } }
-          : { animate: { y: [0, -12, 0] }, transition: { duration: 0.9, repeat: Infinity, ease: "easeInOut" } };
+          ? { animate: { x: [-3, 3, -3], y: [0, -4, 0] }, transition: { duration: 0.7, repeat: Infinity, ease: "easeInOut" as const } }
+          : { animate: { y: [0, -12, 0] }, transition: { duration: 0.9, repeat: Infinity, ease: "easeInOut" as const } };
 
   return (
     <div className={cn("relative inline-grid place-items-center", className)} style={{ width: size, height: size }}>

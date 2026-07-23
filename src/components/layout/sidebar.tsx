@@ -42,7 +42,7 @@ export function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-bg-secondary/40 backdrop-blur-xl lg:flex">
       <div className="flex items-center gap-3 px-5 py-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.svg" alt="Rabbit Verse" className="size-10 rounded-xl" />
+        <img src="/logo.png" alt="Rabbit Verse" className="size-10 rounded-xl" />
         <div className="leading-tight">
           <div className="text-[15px] font-semibold tracking-tight">Rabbit Verse</div>
           <div className="text-xs text-fg-muted">Your Life OS</div>

@@ -17,11 +17,13 @@ _Last updated: 2026-07-23_
 
 ## 1. Status at a glance
 
-**Phase: Foundation / UI.** The **entire front-end is built and looks alive**, but it runs
-entirely on **deterministic sample data** (`src/lib/sample-data.ts`). **No backend exists yet** —
-no auth, no database, no persistence, no reminders. Nothing you type is saved.
+**Phase: Backend wiring — auth done, data next.** The **entire front-end is built and alive** on
+**sample data** (`src/lib/sample-data.ts`). The **Supabase auth layer is now code-complete** (Google
+sign-in + single-email allowlist, session `proxy.ts`, full RLS schema), but the app still **defaults to
+demo mode** until real keys are added, and section reads/writes are not migrated to the DB yet.
 
-**Next milestone:** wire Supabase (auth + database) so the UI reads/writes real data instead of mocks.
+**Next milestone:** create the Supabase project (`SUPABASE_SETUP.md`), then migrate each section from
+sample data to real persistence — Expenses first.
 
 Legend: ✅ done · 🟡 partial / UI-only (no real data) · ⬜ not started
 
@@ -50,9 +52,9 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 - 🟡 App shell — sidebar + mobile nav, section routing, greeting *(built; not behind auth)*
 - ✅ Theme system — dark default + light, theme toggle, design tokens
 - 🟡 PWA — web manifest present (`src/app/manifest.ts`); **service worker not added**
-- ⬜ Supabase project + client wiring
-- ⬜ Google OAuth + single-email allowlist + `proxy.ts` session refresh
-- ⬜ Row-Level Security (RLS) policies
+- 🟡 Supabase client wiring — browser/server clients + `proxy.ts` session refresh built (`src/lib/supabase/`, `src/proxy.ts`); **Supabase project not created yet**
+- 🟡 Google OAuth + single-email allowlist — `/login`, `app/auth/actions.ts`, `auth/callback` built; needs a live project to test
+- ✅ Row-Level Security (RLS) — full schema + policies + on-signup seed trigger in `supabase/migrations/0001_init.sql`
 
 ### Phase 2 — Reusable primitives
 - ✅ Chart wrappers — sparkline, trend (line/area), radar balance
@@ -105,8 +107,11 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 - **Theming:** `components/theme-provider.tsx`, `theme-toggle.tsx`, `app/globals.css` tokens; `next-themes`
 - **PWA:** `app/manifest.ts` (no service worker / offline handling yet)
 
-**Not present yet:** any `supabase/` client, `proxy.ts`, `.env`, auth pages/guards, DB migrations,
-RLS policies, service worker, push subscription code, real Server Actions writing to a database.
+**Now present (auth layer):** `src/lib/supabase/` clients, `src/proxy.ts` guard, `login/` + `auth/`
+(actions + callback + allowlist), `supabase/migrations/0001_init.sql` (schema + RLS + seed),
+`.env.local.example`, `SUPABASE_SETUP.md`. App defaults to demo mode until keys are set.
+**Still not present:** a created Supabase project + `.env.local`, section reads/writes wired to the DB,
+service worker, push subscription code.
 
 ---
 
@@ -114,8 +119,23 @@ RLS policies, service worker, push subscription code, real Server Actions writin
 
 > Newest first. Each entry: date · what changed · what's next.
 
-### 2026-07-23 — Baseline captured
-- Established this status doc. No code changed this session; recorded the current state as the baseline.
+### 2026-07-23 — Supabase auth layer (code-complete, demo-mode default)
+- Built the full Supabase integration: browser/server clients (`src/lib/supabase/`), Next 16 session
+  `proxy.ts` with route protection, Google OAuth (`app/auth/actions.ts` + `auth/callback` with a
+  single-email allowlist), a branded `/login` page, and sign-out in Settings.
+- Wrote the DB schema + RLS + on-signup seed trigger (`supabase/migrations/0001_init.sql`),
+  `.env.local.example`, and `SUPABASE_SETUP.md`.
+- App still **defaults to demo mode** with no keys; verified `/`, `/settings`, `/login` render and
+  `proxy.ts` no-ops in demo. `tsc --noEmit` clean. Also fixed a `motion` ease type, a Tailwind v4
+  Lightning-CSS `backdrop-filter` strip (glass frosts now), and an extension hydration warning.
+- **Next:** create the Supabase project → migrate Expenses to real data as the reference pattern,
+  then the other sections, then Mood Mode palette + reminders + Higgsfield mascot art.
+
+### 2026-07-23 — Baseline captured + git tracking added
+- Established this status doc as the plan + progress tracker.
+- **Initialized git** and made the baseline commit (`5e7345a`, 63 files; `node_modules` ignored) so future
+  sessions can diff exactly what changed.
+- No app code changed this session; recorded the current state as the baseline.
 - **Where things stand:** full UI is built and animated on sample data; backend is untouched.
 - **Suggested next:** stand up Supabase (project + client + `proxy.ts`), then Google auth + allowlist,
   then swap one section (Expenses is the planned first) from sample data to real persistence.

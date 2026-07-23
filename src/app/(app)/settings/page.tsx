@@ -4,6 +4,8 @@ import { profile } from "@/lib/sample-data";
 import { Panel } from "@/components/dashboard/panel";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Icon } from "@/components/icon";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { signOut } from "@/app/auth/actions";
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -44,13 +46,30 @@ export default function SettingsPage() {
         </Panel>
 
         <Panel title="Data">
-          <div className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm">
-            <Icon name="Sparkles" size={18} style={{ color: "var(--accent-purple)" }} />
-            <div>
-              <div className="font-medium">Connect Supabase</div>
-              <div className="text-xs text-fg-muted">Sign in with Google to sync your real data across devices.</div>
+          {isSupabaseConfigured ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm">
+                <Icon name="CheckCircle2" size={18} style={{ color: "var(--accent-mint)" }} />
+                <div>
+                  <div className="font-medium">Connected to Supabase</div>
+                  <div className="text-xs text-fg-muted">Your data syncs privately across devices.</div>
+                </div>
+              </div>
+              <form action={signOut}>
+                <button type="submit" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg">
+                  Sign out
+                </button>
+              </form>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm">
+              <Icon name="Sparkles" size={18} style={{ color: "var(--accent-purple)" }} />
+              <div>
+                <div className="font-medium">Demo mode</div>
+                <div className="text-xs text-fg-muted">Add Supabase keys (see SUPABASE_SETUP.md) to sign in and sync real data.</div>
+              </div>
+            </div>
+          )}
         </Panel>
       </div>
     </div>

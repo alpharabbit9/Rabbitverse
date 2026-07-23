@@ -56,18 +56,18 @@ export function StatCard({
         )}
       </div>
 
-      <div className="mt-3 flex items-end justify-between gap-3">
-        <div>
-          <div className="text-3xl font-bold tracking-tight tabular-nums">{value}</div>
+      <div className="mt-3 flex items-end justify-between gap-2 sm:gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">{value}</div>
           {toneLabel && (
-            <div className="mt-0.5 text-sm font-medium" style={{ color: toneColor }}>
+            <div className="mt-0.5 truncate text-[13px] font-medium sm:text-sm" style={{ color: toneColor }}>
               {toneLabel}
             </div>
           )}
         </div>
         {spark && (
-          <div className="shrink-0 opacity-90">
-            <Sparkline data={spark.data} color={spark.color ?? toneColor} width={104} height={40} />
+          <div className="w-[68px] shrink-0 opacity-90 sm:w-[104px]">
+            <Sparkline data={spark.data} color={spark.color ?? toneColor} width={104} height={40} responsive />
           </div>
         )}
       </div>

@@ -6,6 +6,8 @@ export function Sparkline({
   color = "var(--accent-mint)",
   fill = true,
   strokeWidth = 2,
+  responsive = false,
+  className,
 }: {
   data: number[];
   width?: number;
@@ -13,8 +15,15 @@ export function Sparkline({
   color?: string;
   fill?: boolean;
   strokeWidth?: number;
+  /** When true the SVG scales to fill its container width (keeps `height`). */
+  responsive?: boolean;
+  className?: string;
 }) {
-  if (data.length < 2) return <svg width={width} height={height} />;
+  // Intrinsic drawing space stays fixed; `responsive` lets CSS stretch the width.
+  const svgProps = responsive
+    ? { viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none" as const, width: "100%", height }
+    : { width, height };
+  if (data.length < 2) return <svg {...svgProps} className={className} />;
   const min = Math.min(...data);
   const max = Math.max(...data);
   const span = max - min || 1;
@@ -29,7 +38,7 @@ export function Sparkline({
   const gid = `spark-${Math.round(color.length * data.length)}-${Math.round(data[0])}`;
 
   return (
-    <svg width={width} height={height} className="overflow-visible">
+    <svg {...svgProps} className={className ? `overflow-visible ${className}` : "overflow-visible"}>
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.28" />

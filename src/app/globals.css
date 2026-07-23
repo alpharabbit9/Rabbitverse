@@ -43,6 +43,11 @@
   --shadow-glow: 0 0 40px -8px rgba(139, 92, 246, 0.45);
   --ring: rgba(139, 92, 246, 0.5);
 
+  /* Liquid-glass surfaces (nav bar, floating chrome) */
+  --glass-nav: rgba(10, 17, 33, 0.62);
+  --glass-sheen: rgba(255, 255, 255, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.10);
+
   color-scheme: dark;
 }
 
@@ -79,6 +84,11 @@
 
   --shadow-glow: 0 10px 30px -12px rgba(99, 102, 241, 0.28);
   --ring: rgba(99, 102, 241, 0.4);
+
+  /* Liquid-glass surfaces (nav bar, floating chrome) */
+  --glass-nav: rgba(255, 255, 255, 0.68);
+  --glass-sheen: rgba(255, 255, 255, 0.7);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
 
   color-scheme: light;
 }
@@ -150,16 +160,32 @@
 }
 
 @layer components {
-  /* Glass card — the core surface of Rabbit Verse */
+  /* Glass card — the core surface of Rabbit Verse.
+     A faint top-down sheen + inset highlight gives it real depth (dark identity). */
   .glass {
-    background: var(--card);
+    background-color: var(--card);
+    background-image: linear-gradient(155deg, var(--glass-sheen), transparent 42%);
     border: 1px solid var(--border);
-    backdrop-filter: blur(18px) saturate(140%);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+    @apply backdrop-blur-xl backdrop-saturate-150;
   }
   .light .glass {
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -16px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -16px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   }
+
+  /* Elevated liquid glass — floating chrome (tab bar, auth card, overlays).
+     Stronger blur + saturation so content behind it bends like frosted glass. */
+  .glass-strong {
+    background-color: var(--glass-nav);
+    background-image: linear-gradient(160deg, var(--glass-highlight), transparent 46%);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--glass-highlight);
+    @apply backdrop-blur-2xl backdrop-saturate-200;
+  }
+  .light .glass-strong {
+    box-shadow: 0 12px 40px -14px rgba(15, 23, 42, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
   .card-surface {
     background: var(--card-solid);
     border: 1px solid var(--border);
@@ -188,3 +214,25 @@
   50% { transform: translateY(-8px); }
 }
 .animate-float { animation: rv-float 4s ease-in-out infinite; }
+
+/* Auth screen — drifting aurora orbs behind the sign-in card */
+@keyframes rv-orb {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(28px, -26px, 0) scale(1.12); }
+  66% { transform: translate3d(-22px, 18px, 0) scale(0.94); }
+}
+.animate-orb { animation: rv-orb 14s ease-in-out infinite; }
+
+/* Blinking caret for the typewriter tagline */
+@keyframes rv-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.rv-caret { animation: rv-blink 1s step-end infinite; }
+
+/* Sweeping sheen for the sign-in button */
+@keyframes rv-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-orb, .rv-caret { animation: none; }
+}
