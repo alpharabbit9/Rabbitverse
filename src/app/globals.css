@@ -1,0 +1,190 @@
+@import "tailwindcss";
+
+/*
+  Rabbit Verse — Design System v2.0
+  Dark theme is the default identity. Light theme is designed independently
+  (airy / Apple-Health-like), NOT an inversion. Tokens below are consumed by
+  Tailwind v4 via the @theme block, so utilities like `bg-bg`, `text-fg`,
+  `border-border`, `text-accent-purple` are available across the app.
+*/
+
+/* ---------- DARK (default identity) ---------- */
+:root {
+  --bg: #05070f;
+  --bg-secondary: #091225;
+  --surface: #0a1120;
+  --card: rgba(255, 255, 255, 0.04);
+  --card-solid: #0c1424;
+  --card-hover: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  --fg: #f4f7fb;
+  --fg-secondary: rgba(244, 247, 251, 0.72);
+  --fg-muted: rgba(244, 247, 251, 0.48);
+
+  --accent-purple: #8b5cf6;
+  --accent-blue: #5b7cfa;
+  --accent-mint: #4de3a0;
+  --accent-cyan: #61d7ff;
+  --accent-gold: #f5c35c;
+  --accent-orange: #ffb15e;
+
+  --primary: #8b5cf6;
+  --primary-2: #5b7cfa;
+
+  /* heatmap (GitHub-style greens, on dark) */
+  --heat-0: rgba(255, 255, 255, 0.05);
+  --heat-1: #0e4429;
+  --heat-2: #196c3a;
+  --heat-3: #2ea043;
+  --heat-4: #4de3a0;
+
+  --shadow-glow: 0 0 40px -8px rgba(139, 92, 246, 0.45);
+  --ring: rgba(139, 92, 246, 0.5);
+
+  color-scheme: dark;
+}
+
+/* ---------- LIGHT (independent, airy) ---------- */
+.light {
+  --bg: #f5f7fc;
+  --bg-secondary: #eef2fa;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card-solid: #ffffff;
+  --card-hover: #fbfcff;
+  --border: #e6eaf2;
+  --border-strong: #d6dbe7;
+
+  --fg: #0f172a;
+  --fg-secondary: rgba(15, 23, 42, 0.64);
+  --fg-muted: rgba(15, 23, 42, 0.42);
+
+  --accent-purple: #7c5cf5;
+  --accent-blue: #5b7cfa;
+  --accent-mint: #22c493;
+  --accent-cyan: #2bb6e6;
+  --accent-gold: #e0a63c;
+  --accent-orange: #f0913f;
+
+  --primary: #6366f1;
+  --primary-2: #5b7cfa;
+
+  --heat-0: #eceff5;
+  --heat-1: #b7e6c8;
+  --heat-2: #6fd39a;
+  --heat-3: #33b673;
+  --heat-4: #16924f;
+
+  --shadow-glow: 0 10px 30px -12px rgba(99, 102, 241, 0.28);
+  --ring: rgba(99, 102, 241, 0.4);
+
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-solid: var(--card-solid);
+  --color-card-hover: var(--card-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-fg: var(--fg);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-muted: var(--fg-muted);
+
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-mint: var(--accent-mint);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-orange: var(--accent-orange);
+
+  --color-primary: var(--primary);
+  --color-primary-2: var(--primary-2);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Ambient background glow — cinematic depth (dark only) */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 60rem at 85% -10%, rgba(91, 124, 250, 0.12), transparent 60%),
+      radial-gradient(50rem 50rem at -10% 20%, rgba(139, 92, 246, 0.1), transparent 55%);
+    opacity: 1;
+    transition: opacity 0.4s ease;
+  }
+  .light body::before {
+    background:
+      radial-gradient(60rem 60rem at 85% -10%, rgba(99, 102, 241, 0.08), transparent 60%),
+      radial-gradient(50rem 50rem at -10% 20%, rgba(45, 182, 230, 0.07), transparent 55%);
+  }
+}
+
+@layer components {
+  /* Glass card — the core surface of Rabbit Verse */
+  .glass {
+    background: var(--card);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+  .light .glass {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -16px rgba(15, 23, 42, 0.12);
+  }
+  .card-surface {
+    background: var(--card-solid);
+    border: 1px solid var(--border);
+  }
+  .glow {
+    box-shadow: var(--shadow-glow);
+  }
+}
+
+/* Scrollbars — subtle, on-brand */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+@keyframes rv-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float { animation: rv-float 4s ease-in-out infinite; }
