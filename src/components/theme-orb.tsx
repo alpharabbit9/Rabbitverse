@@ -12,13 +12,13 @@ import { cn } from "@/lib/utils";
 
 const DAY = {
   bg: "radial-gradient(circle at 34% 28%, #fff4cf 0%, #ffd166 26%, #ff9e3d 58%, #ef6f27 100%)",
-  glow: "0 0 16px 2px rgba(255,158,64,0.60), 0 0 5px rgba(255,209,102,0.85)",
-  halo: "radial-gradient(circle, rgba(255,158,64,0.55), transparent 70%)",
+  glow: "0 0 22px 4px rgba(255,158,64,0.7), 0 0 9px rgba(255,209,102,0.95)",
+  halo: "radial-gradient(circle, rgba(255,158,64,0.7), transparent 68%)",
 };
 const NIGHT = {
   bg: "radial-gradient(circle at 34% 28%, #e8efff 0%, #8fabff 24%, #4460e0 58%, #182a66 100%)",
-  glow: "0 0 16px 2px rgba(91,124,250,0.60), 0 0 5px rgba(120,150,255,0.75)",
-  halo: "radial-gradient(circle, rgba(91,124,250,0.55), transparent 70%)",
+  glow: "0 0 22px 4px rgba(91,124,250,0.7), 0 0 9px rgba(120,150,255,0.85)",
+  halo: "radial-gradient(circle, rgba(91,124,250,0.7), transparent 68%)",
 };
 
 export function ThemeOrb({ size = 34, className }: { size?: number; className?: string }) {
@@ -49,7 +49,7 @@ export function ThemeOrb({ size = 34, className }: { size?: number; className?: 
     >
       {/* ambient halo */}
       <span
-        className="pointer-events-none absolute -inset-1 rounded-full opacity-70 blur-md transition-[background] duration-500"
+        className="pointer-events-none absolute -inset-[5px] rounded-full opacity-80 blur-lg transition-[background] duration-500"
         style={{ background: orb.halo }}
       />
       {/* day sphere */}

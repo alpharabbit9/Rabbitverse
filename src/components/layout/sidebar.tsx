@@ -4,10 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import { NAV, SETTINGS_NAV, type NavItem } from "@/lib/nav";
-import { profile } from "@/lib/sample-data";
 import { Icon } from "@/components/icon";
 import { ThemeOrb } from "@/components/theme-orb";
+import { ProfileAvatar } from "@/components/layout/profile-avatar";
 import { cn } from "@/lib/utils";
+
+export interface ProfileChip {
+  name: string;
+  avatarUrl: string | null;
+  level: number;
+  streakDays: number;
+  xp: number;
+  xpToNext: number;
+}
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
@@ -33,10 +42,10 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ profile }: { profile: ProfileChip }) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
-  const xpPct = Math.round((profile.xp / profile.xpToNext) * 100);
+  const xpPct = Math.round((profile.xp / Math.max(1, profile.xpToNext)) * 100);
 
   return (
     <aside className="glass-strong fixed inset-y-4 left-4 z-40 hidden w-64 flex-col overflow-hidden rounded-[28px] lg:flex">
@@ -59,9 +68,7 @@ export function Sidebar() {
 
       <div className="space-y-3 p-3">
         <div className="glass flex items-center gap-3 rounded-2xl p-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent-purple to-accent-blue text-sm font-bold text-white">
-            {profile.name[0]}
-          </div>
+          <ProfileAvatar name={profile.name} avatarUrl={profile.avatarUrl} size={40} className="rounded-xl" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{profile.name}</div>
             <div className="text-[11px] text-fg-muted">Level {profile.level} · Explorer</div>

@@ -11,19 +11,22 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-28_
 
 ---
 
 ## 1. Status at a glance
 
-**Phase: Backend wiring — auth done, data next.** The **entire front-end is built and alive** on
-**sample data** (`src/lib/sample-data.ts`). The **Supabase auth layer is now code-complete** (Google
-sign-in + single-email allowlist, session `proxy.ts`, full RLS schema), but the app still **defaults to
-demo mode** until real keys are added, and section reads/writes are not migrated to the DB yet.
+**Phase: Real data wired end-to-end.** Every section now **reads from Supabase and writes back** for the
+signed-in user (RLS-scoped): Expenses (log form), Projects (create + log progress), Workout (mark
+done/rest + weight), Mental Health (mood + journal), and the Overview aggregates all of it into real
+Life-Score / trend / streak / heatmap. The profile now shows the **Google account picture**. The app
+still **defaults to demo mode** (sample data) until `NEXT_PUBLIC_DEMO_MODE=false` + sign-in; both paths
+share the same components via a server-page → client-view split (`*-view.tsx`), so demo and real render
+identically. `tsc` + `eslint` clean; demo mode verified in-browser.
 
-**Next milestone:** create the Supabase project (`SUPABASE_SETUP.md`), then migrate each section from
-sample data to real persistence — Expenses first.
+**Next milestone:** use it for a real week, then tackle remaining polish — a height input for BMI,
+Mood Mode driven by real signals, then reminders (Web Push + cron) and Higgsfield mascot art.
 
 Legend: ✅ done · 🟡 partial / UI-only (no real data) · ⬜ not started
 
@@ -61,21 +64,22 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 - ✅ Progress ring + animated count-up
 - ✅ Activity heatmap component
 - ✅ SVG rabbit mascot component
-- 🟡 Logging-input pattern (today+yesterday window) — quick-add UI exists; **writes nowhere real**
+- ✅ Logging-input pattern (today+yesterday window) — real Server Actions per section, window-validated
 
 ### Phase 3 — Sections (schema + inputs + graphs + heatmap each)
-- 🟡 Expenses — page + charts on sample data; **no schema / persistence**
-- 🟡 Projects — page UI on sample data; no persistence
-- 🟡 Workout — page UI on sample data; no persistence (per-exercise = Phase 1.5)
-- 🟡 Mental Health — page UI on sample data; no persistence
+- ✅ Expenses — real reads + inline log form (`quick-add/actions.ts` `addExpense`)
+- ✅ Projects — real reads + create project + per-project log-progress (bumps `current_value` + writes `project_logs`)
+- ✅ Workout — real reads + mark today done/rest + weight/body-fat logging (per-exercise still Phase 1.5)
+- ✅ Mental Health — real reads + mood(1–5) + journal upsert
 
 ### Phase 4 — All / Dashboard
-- 🟡 Combined cards + trend + radar + timeline + section cards (UI on sample data)
+- ✅ Combined cards + trend + radar + timeline + section cards — real aggregates via `lib/aggregate.ts` + `lib/data/queries.ts`
 - ✅ Motivation engine (`src/lib/motivation.ts`) — rule-based headline + "rabbit says"
 
 ### Phase 5 — Mood Mode & mascot wiring
-- 🟡 Life-score / mood-state engine (`src/lib/life-score.ts`) — computes score & tone from signals
-- 🟡 Mascot state derived from activity/streak (wired to sample signals)
+- ✅ Life-score / mood-state engine (`src/lib/life-score.ts`) — computes score & tone from signals (real in live mode)
+- ✅ Mascot state derived from activity/streak
+- 🟡 Mood Mode aura (`components/mood-mode.tsx`) still reads sample `mood` — cosmetic; wire to real signals next
 
 ### Phase 6 — Reminders
 - ⬜ Web Push subscription storage
@@ -94,7 +98,9 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 
 ## 4. Current-state snapshot (what exists in the code today)
 
-**Everything below renders from `src/lib/sample-data.ts` (a seeded PRNG) — not a database.**
+**Each page is a server component that reads real Supabase rows when signed in, and falls back to
+`src/lib/sample-data.ts` (a seeded PRNG) in demo mode — via `lib/data/queries.ts` + `lib/aggregate.ts`
+and per-section `*-view.tsx` client components + `actions.ts` Server Actions.**
 
 - **App shell:** `src/app/(app)/layout.tsx`, `components/layout/sidebar.tsx`, `mobile-nav.tsx`
 - **Pages:** All/overview `(app)/page.tsx`; `projects`, `workout`, `expenses`, `mental-health`,
@@ -118,6 +124,27 @@ service worker, push subscription code.
 ## 5. Session Log
 
 > Newest first. Each entry: date · what changed · what's next.
+
+### 2026-07-28 — Real data wired across all sections + Google profile picture
+- Added a shared read/aggregate layer: `src/lib/aggregate.ts` (pure: activity build, streak, signals,
+  30-day life-score trend, progression) and `src/lib/data/queries.ts` (server-only Supabase fetchers that
+  shape rows into the existing domain types, so components are mode-agnostic).
+- Refactored every dashboard into a **server page → client `*-view.tsx`** pair. In demo mode the page
+  feeds sample arrays; when signed in it feeds real Supabase rows — identical UI either way.
+- **Write path (Server Actions):** Expenses log (existing `addExpense`), Projects `createProject` +
+  `logProgress` (bumps `current_value`, records `project_logs` for the heatmap), Workout
+  `setTodayWorkout` (done/rest upsert) + `logWeight` (body_metrics upsert), Mental `saveJournal`
+  (mood + text upsert). All validate the today/yesterday window and revalidate paths.
+- **Overview** now computes real Life Score, trend, streak, mood, balance, timeline, and rabbit state
+  from the live rows via the aggregate layer.
+- **Profile:** new `components/layout/profile-avatar.tsx` shows the signed-in Google account picture
+  (`user_metadata.avatar_url`/`picture`) in the sidebar chip + Settings, with a gradient-monogram
+  fallback (used in demo / on load error). Settings is now a server component showing name + email.
+- Dropped the `server-only` import (not installed) — queries are only imported by server files anyway.
+  `tsc --noEmit` and `eslint` clean; verified Overview/Expenses/Settings/Projects/Mental render in demo.
+- **Known gaps:** BMI needs a height input (shows "—" until set); Mood Mode aura still cosmetic/sample.
+- **Next:** flip `NEXT_PUBLIC_DEMO_MODE=false`, log a real week, then height input + real Mood Mode +
+  reminders (Web Push + `pg_cron`) + Higgsfield mascot art.
 
 ### 2026-07-23 — Supabase auth layer (code-complete, demo-mode default)
 - Built the full Supabase integration: browser/server clients (`src/lib/supabase/`), Next 16 session

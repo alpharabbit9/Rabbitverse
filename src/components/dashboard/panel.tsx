@@ -14,7 +14,7 @@ export function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className={cn("glass rounded-2xl p-5", className)}>
+    <section className={cn("glass min-w-0 rounded-2xl p-5", className)}>
       {(title || action) && (
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>

@@ -1,76 +1,62 @@
-"use client";
-
-import { addDays, eachDay, shortDate } from "@/lib/dates";
-import { activity, categories, expenses, TODAY_ISO } from "@/lib/sample-data";
-import { Panel } from "@/components/dashboard/panel";
-import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
-import { TrendChart } from "@/components/charts/trend-chart";
-import { StatCard } from "@/components/dashboard/stat-card";
-import { Icon } from "@/components/icon";
+import { addDays, dhakaToday, shortDate } from "@/lib/dates";
 import { taka } from "@/lib/utils";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getExpensesData } from "@/lib/data/queries";
+import { activity as sampleActivity, categories as sampleCategories, expenses as sampleExpenses } from "@/lib/sample-data";
+import { Panel } from "@/components/dashboard/panel";
+import { Icon } from "@/components/icon";
+import { ExpensesView } from "./expenses-view";
+import { ExpenseForm } from "@/components/quick-add/expense-form";
+import { addExpense } from "../quick-add/actions";
 
-export default function ExpensesPage() {
-  const last7 = eachDay(addDays(TODAY_ISO, -6), TODAY_ISO);
-  const last30 = eachDay(addDays(TODAY_ISO, -29), TODAY_ISO);
+export default async function ExpensesPage() {
+  const today = dhakaToday();
 
-  const today = expenses.filter((e) => e.date === TODAY_ISO).reduce((a, e) => a + e.amount, 0);
-  const week = expenses.filter((e) => last7.includes(e.date)).reduce((a, e) => a + e.amount, 0);
-  const month = expenses.filter((e) => last30.includes(e.date)).reduce((a, e) => a + e.amount, 0);
-  const avg = Math.round(month / 30);
+  if (!isSupabaseConfigured) {
+    return <ExpensesView categories={sampleCategories} expenses={sampleExpenses} activity={sampleActivity} today={today} />;
+  }
 
-  const prevWeek = expenses
-    .filter((e) => eachDay(addDays(TODAY_ISO, -13), addDays(TODAY_ISO, -7)).includes(e.date))
-    .reduce((a, e) => a + e.amount, 0);
-  const up = week >= prevWeek;
+  const { categories, expenses, activity } = await getExpensesData(today);
+  const recent = [...expenses].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6);
+  const catMap = new Map(categories.map((c) => [c.id, c]));
 
-  const byCat = categories
-    .map((c) => ({ ...c, total: expenses.filter((e) => e.categoryId === c.id && last30.includes(e.date)).reduce((a, e) => a + e.amount, 0) }))
-    .sort((a, b) => b.total - a.total);
-  const maxCat = Math.max(1, ...byCat.map((c) => c.total));
-
-  const trend = last30.map((d) => ({ label: shortDate(d), value: expenses.filter((e) => e.date === d).reduce((a, e) => a + e.amount, 0) }));
-
-  return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
-        <p className="mt-1 text-sm text-fg-secondary">Where your money actually goes — in ৳ BDT</p>
-      </header>
-
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard index={0} icon="Wallet" label="Today" accent="var(--accent-mint)" value={taka(today)} />
-        <StatCard index={1} icon="Calendar" label="This week" accent="var(--accent-blue)" value={taka(week)} toneLabel={up ? "Up vs last week" : "Down vs last week"} toneColor={up ? "var(--accent-orange)" : "var(--accent-mint)"} />
-        <StatCard index={2} icon="Calendar" label="This month" accent="var(--accent-purple)" value={taka(month)} />
-        <StatCard index={3} icon="Activity" label="Avg / day" accent="var(--accent-cyan)" value={taka(avg)} />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Spending Trend" className="lg:col-span-2" subtitle={up ? "Trending up — worth a glance" : "Trending down — nice control"}>
-          <TrendChart data={trend} color={up ? "var(--accent-orange)" : "var(--accent-mint)"} height={240} suffix="৳" />
-        </Panel>
-        <Panel title="By Category" subtitle="Last 30 days">
-          <ul className="space-y-3">
-            {byCat.map((c) => (
-              <li key={c.id}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <Icon name={c.icon} size={15} style={{ color: c.color }} />
-                    {c.name}
+  const logSlot = (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Panel title="Log an expense" subtitle="Today or yesterday · saves instantly">
+        {categories.length ? (
+          <ExpenseForm categories={categories} today={today} yesterday={addDays(today, -1)} action={addExpense} />
+        ) : (
+          <p className="text-sm text-fg-muted">Categories seed on first sign-in — refresh in a moment.</p>
+        )}
+      </Panel>
+      <Panel title="Recent" subtitle="Straight from your database">
+        {recent.length ? (
+          <ul className="space-y-2.5">
+            {recent.map((e) => {
+              const c = e.categoryId ? catMap.get(e.categoryId) : undefined;
+              return (
+                <li key={e.id} className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5">
+                  <span className="flex items-center gap-2.5 text-sm">
+                    <Icon name={c?.icon ?? "Wallet"} size={16} style={{ color: c?.color ?? "var(--accent-mint)" }} />
+                    <span>
+                      <span className="font-medium">{c?.name ?? "Expense"}</span>
+                      {e.note ? <span className="text-fg-muted"> · {e.note}</span> : null}
+                      <span className="block text-xs text-fg-muted">{shortDate(e.date)}</span>
+                    </span>
                   </span>
-                  <span className="tabular-nums text-fg-secondary">{taka(c.total)}</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-card-hover">
-                  <div className="h-full rounded-full" style={{ width: `${(c.total / maxCat) * 100}%`, background: c.color }} />
-                </div>
-              </li>
-            ))}
+                  <span className="font-semibold tabular-nums">{taka(e.amount)}</span>
+                </li>
+              );
+            })}
           </ul>
-        </Panel>
-      </div>
-
-      <Panel title="Spending Activity" subtitle="Days you logged an expense">
-        <ActivityHeatmap activity={activity} section="expenses" today={TODAY_ISO} />
+        ) : (
+          <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-fg-muted">
+            Nothing logged yet — add your first expense on the left. 🐇
+          </div>
+        )}
       </Panel>
     </div>
   );
+
+  return <ExpensesView categories={categories} expenses={expenses} activity={activity} today={today} logSlot={logSlot} />;
 }

@@ -43,6 +43,10 @@
   --shadow-glow: 0 0 40px -8px rgba(139, 92, 246, 0.45);
   --ring: rgba(139, 92, 246, 0.5);
 
+  /* Mood Mode ambient aura — defaults (steady). Overridden by [data-mood]. */
+  --mood-glow-1: rgba(91, 124, 250, 0.12);
+  --mood-glow-2: rgba(139, 92, 246, 0.1);
+
   /* Liquid-glass surfaces (nav bar, floating chrome) */
   --glass-nav: rgba(10, 17, 33, 0.62);
   --glass-sheen: rgba(255, 255, 255, 0.06);
@@ -84,6 +88,10 @@
 
   --shadow-glow: 0 10px 30px -12px rgba(99, 102, 241, 0.28);
   --ring: rgba(99, 102, 241, 0.4);
+
+  /* Mood Mode ambient aura — light defaults (softer). */
+  --mood-glow-1: rgba(99, 102, 241, 0.1);
+  --mood-glow-2: rgba(45, 182, 230, 0.08);
 
   /* Liquid-glass surfaces (nav bar, floating chrome) */
   --glass-nav: rgba(255, 255, 255, 0.68);
@@ -148,15 +156,13 @@
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(60rem 60rem at 85% -10%, rgba(91, 124, 250, 0.12), transparent 60%),
-      radial-gradient(50rem 50rem at -10% 20%, rgba(139, 92, 246, 0.1), transparent 55%);
+      radial-gradient(60rem 60rem at 85% -10%, var(--mood-glow-1), transparent 60%),
+      radial-gradient(50rem 50rem at -10% 20%, var(--mood-glow-2), transparent 55%);
     opacity: 1;
     transition: opacity 0.4s ease;
   }
   .light body::before {
-    background:
-      radial-gradient(60rem 60rem at 85% -10%, rgba(99, 102, 241, 0.08), transparent 60%),
-      radial-gradient(50rem 50rem at -10% 20%, rgba(45, 182, 230, 0.07), transparent 55%);
+    opacity: 0.62;
   }
 }
 
@@ -251,4 +257,20 @@ html.lenis body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-orb, .rv-caret { animation: none; }
+}
+
+/* ---------- Mood Mode ----------
+   The whole UI's ambient aura subtly reflects the week's state. `data-mood` is
+   set on <html> by <MoodMode/>. Steady = the default (:root / .light) glow. */
+[data-mood="great"] {
+  --mood-glow-1: rgba(77, 227, 160, 0.15);
+  --mood-glow-2: rgba(97, 215, 255, 0.11);
+}
+[data-mood="streak"] {
+  --mood-glow-1: rgba(255, 177, 94, 0.17);
+  --mood-glow-2: rgba(245, 195, 92, 0.12);
+}
+[data-mood="difficult"] {
+  --mood-glow-1: rgba(129, 140, 248, 0.11);
+  --mood-glow-2: rgba(167, 139, 250, 0.09);
 }

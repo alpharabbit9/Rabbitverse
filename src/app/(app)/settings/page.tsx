@@ -1,10 +1,11 @@
-"use client";
-
-import { profile } from "@/lib/sample-data";
+import { dhakaToday } from "@/lib/dates";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getProfileSummary } from "@/lib/data/queries";
+import { profile as sampleProfile } from "@/lib/sample-data";
 import { Panel } from "@/components/dashboard/panel";
 import { ThemeOrb } from "@/components/theme-orb";
 import { Icon } from "@/components/icon";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { ProfileAvatar } from "@/components/layout/profile-avatar";
 import { signOut } from "@/app/auth/actions";
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -16,7 +17,11 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const p = isSupabaseConfigured
+    ? await getProfileSummary(dhakaToday())
+    : { name: sampleProfile.name, email: null, avatarUrl: null, level: sampleProfile.level, streakDays: sampleProfile.streakDays, xp: 0, xpToNext: 1 };
+
   return (
     <div className="space-y-6">
       <header>
@@ -26,9 +31,15 @@ export default function SettingsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Profile">
-          <Row label="Name" value={profile.name} />
-          <Row label="Level" value={`Level ${profile.level} · Explorer`} />
-          <Row label="Streak" value={`${profile.streakDays} days`} />
+          <div className="mb-4 flex items-center gap-3">
+            <ProfileAvatar name={p.name} avatarUrl={p.avatarUrl} size={56} />
+            <div className="min-w-0">
+              <div className="truncate font-semibold">{p.name}</div>
+              {p.email ? <div className="truncate text-xs text-fg-muted">{p.email}</div> : null}
+            </div>
+          </div>
+          <Row label="Level" value={`Level ${p.level} · Explorer`} />
+          <Row label="Streak" value={`${p.streakDays} day${p.streakDays === 1 ? "" : "s"}`} />
         </Panel>
 
         <Panel title="Appearance">
