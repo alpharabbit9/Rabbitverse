@@ -5,6 +5,7 @@ import { profile as sampleProfile } from "@/lib/sample-data";
 import { Sidebar, type ProfileChip } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { MobileHeader } from "@/components/layout/mobile-header";
+import { DesktopTopbar } from "@/components/layout/desktop-topbar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const chip: ProfileChip = isSupabaseConfigured
@@ -24,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="lg:pl-72">
         <MobileHeader />
         <main className="mx-auto w-full max-w-[1440px] px-4 pb-32 pt-4 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">
+          <DesktopTopbar />
           {children}
         </main>
       </div>

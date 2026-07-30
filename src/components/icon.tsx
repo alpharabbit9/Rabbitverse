@@ -21,10 +21,12 @@ import {
   Menu,
   Moon,
   MoreHorizontal,
+  NotebookPen,
   PenLine,
   Play,
   Plus,
   ReceiptText,
+  Search,
   Settings,
   ShoppingBag,
   Sparkles,
@@ -42,8 +44,8 @@ import {
 const REGISTRY: Record<string, LucideIcon> = {
   Activity, ArrowDown, ArrowRight, ArrowUp, Bell, BookOpen, Brain, Bus, Calendar,
   Check, CheckCircle2, ChevronRight, Dumbbell, Flame, FolderKanban, Heart, HeartPulse,
-  Home, LayoutDashboard, Menu, Moon, MoreHorizontal, PenLine, Play, Plus, ReceiptText,
-  Settings, ShoppingBag, Sparkles, Star, Sun, Target, TrendingDown, TrendingUp,
+  Home, LayoutDashboard, Menu, Moon, MoreHorizontal, NotebookPen, PenLine, Play, Plus, ReceiptText,
+  Search, Settings, ShoppingBag, Sparkles, Star, Sun, Target, TrendingDown, TrendingUp,
   Utensils, Wallet, Wind,
 };
 

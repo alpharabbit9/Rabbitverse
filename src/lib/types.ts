@@ -12,16 +12,33 @@ export interface Profile {
   streakDays: number;
 }
 
+export interface ProjectTask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
+/** A dated progress update — the app's "commit". One per day per project. */
+export interface ProjectCommit {
+  id: string;
+  date: string; // yyyy-mm-dd
+  note: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   description?: string;
+  goals?: string; // longer "why / vision" for the project
   targetValue: number;
   targetUnit: string; // "%", "sessions", "words", …
   current: number;
   status: "ongoing" | "completed";
   startDate: string;
   targetDate?: string;
+  tasks?: ProjectTask[]; // milestone checklist; when present, drives progress %
+  commits?: ProjectCommit[]; // dated written updates (detail view only)
+  daysWorked?: number; // distinct days an update was logged
 }
 
 export interface ExpenseCategory {

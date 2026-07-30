@@ -11,7 +11,7 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-07-30_
 
 ---
 
@@ -68,7 +68,7 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 
 ### Phase 3 — Sections (schema + inputs + graphs + heatmap each)
 - ✅ Expenses — real reads + inline log form (`quick-add/actions.ts` `addExpense`)
-- ✅ Projects — real reads + create project + per-project log-progress (bumps `current_value` + writes `project_logs`)
+- ✅ Projects — real reads + rich detail: goals/vision, **task checklist** (drives progress %), **dated written updates ("commits") = days worked**, start→finish dates. Detail route `/projects/[id]`. Needs migration `0002` applied.
 - ✅ Workout — real reads + mark today done/rest + weight/body-fat logging (per-exercise still Phase 1.5)
 - ✅ Mental Health — real reads + mood(1–5) + journal upsert
 
@@ -124,6 +124,31 @@ service worker, push subscription code.
 ## 5. Session Log
 
 > Newest first. Each entry: date · what changed · what's next.
+
+### 2026-07-30 — Projects: goals, task checklist, and dated update-commits
+- **New migration `supabase/migrations/0002_project_details.sql` (additive, idempotent):** adds a
+  `goals` text column to `projects` and a new `project_tasks` checklist table (owner-scoped RLS,
+  matching every other table). `project_logs` is left one-row-per-day on purpose — each written
+  update upserts that day's row, so **row count == distinct days worked**. ⚠️ Must be run against the
+  live Supabase before the feature works in live mode.
+- **Model (no conflicts):** task completion writes back into `projects.current_value` as a 0–100%
+  value (`recomputeProgress`), so the ring and every downstream signal (life-score `productivity`,
+  Goals view) keep reading `current/targetValue` unchanged. Projects with no checklist keep their
+  numeric target. `createProject` now takes optional `goals` + aimed-finish-date and no longer
+  requires a numeric target; the Quick-Add "New goal" numeric path is preserved.
+- **New Server Actions** (`projects/actions.ts`): `addTask` / `toggleTask` / `deleteTask` (each
+  recomputes %), and `addCommit` (dated update; appends within a day). All revalidate `/projects`,
+  `/projects/[id]`, and `/`.
+- **Read layer:** `getProjectsData` now attaches each project's `tasks` + `daysWorked`; new
+  `getProjectDetail(id, today)` returns the project with checklist, commits, and its own heatmap.
+- **UI:** `/projects` cards are now links (task-based ring + "N days logged"); new detail route
+  `projects/[id]/page.tsx` → `project-detail-view.tsx` shows goals, dates with a day counter,
+  stats (days worked / updates / tasks done), the checklist (`TaskRow`/`TaskAdder`), and a dated
+  update timeline (`CommitComposer`). Read-only in demo; editable when signed in.
+- **Demo:** `sampleProjectDetail()` synthesizes a deterministic checklist + commits so the detail
+  page is alive on sample data. `tsc --noEmit` + `eslint` clean; verified the demo list, detail,
+  checklist, commits, dates, ring, read-only rows, and the unknown-id 404 render server-side.
+- **Next:** apply migration `0002` to Supabase, then create a real project and log a few days.
 
 ### 2026-07-28 — Real data wired across all sections + Google profile picture
 - Added a shared read/aggregate layer: `src/lib/aggregate.ts` (pure: activity build, streak, signals,

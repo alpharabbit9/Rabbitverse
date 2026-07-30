@@ -4,7 +4,7 @@
   stable. When real persistence lands, this module is swapped for Supabase
   selectors with the same shapes.
 */
-import { addDays, dhakaToday, eachDay, weekdayMon0 } from "./dates";
+import { addDays, dhakaToday, eachDay, parseDay, weekdayMon0 } from "./dates";
 import { lifeScore, moodState, scoreLabel, type LifeSignals } from "./life-score";
 import type {
   BodyMetric,
@@ -14,6 +14,8 @@ import type {
   JournalEntry,
   Profile,
   Project,
+  ProjectCommit,
+  ProjectTask,
   SectionKey,
   TimelineEvent,
   WorkoutLog,
@@ -61,6 +63,48 @@ export const projects: Project[] = [
   { id: "p7", name: "Portfolio Photoshoot", description: "Done and delivered", targetValue: 100, targetUnit: "%", current: 100, status: "completed", startDate: addDays(TODAY, -120) },
   { id: "p8", name: "React Course", description: "Completed advanced React", targetValue: 100, targetUnit: "%", current: 100, status: "completed", startDate: addDays(TODAY, -150) },
 ];
+
+/**
+ * Deterministic demo detail (checklist + dated update-commits) for a project,
+ * so the preview detail page looks alive before Supabase is wired. In live mode
+ * these come from `project_tasks` / `project_logs` instead.
+ */
+const GENERIC_TASKS = [
+  "Define the scope & first milestone",
+  "Set up the essentials",
+  "Do the core work",
+  "Review & refine",
+  "Polish and wrap up",
+];
+const GENERIC_COMMITS = [
+  "Kicked things off and set the direction.",
+  "Solid focused session — real progress today.",
+  "Cleared a tricky blocker, feeling good about it.",
+  "Small steady step forward.",
+  "Momentum building — logged another chunk.",
+  "Refined yesterday's work, happier with it now.",
+];
+
+export function sampleProjectDetail(p: Project): { tasks: ProjectTask[]; commits: ProjectCommit[]; daysWorked: number } {
+  const r = mulberry32(seedFromIso(p.startDate) + p.id.length * 97);
+  const pct = Math.min(100, (p.current / Math.max(1, p.targetValue)) * 100);
+  const total = GENERIC_TASKS.length;
+  const doneCount = Math.round((pct / 100) * total);
+  const tasks: ProjectTask[] = GENERIC_TASKS.map((title, i) => ({ id: `${p.id}-t${i}`, title, done: i < doneCount }));
+
+  const span = Math.max(1, Math.round((parseDay(TODAY).getTime() - parseDay(p.startDate).getTime()) / 86_400_000));
+  const n = Math.min(6, Math.max(2, Math.round(span / 12)));
+  const days = new Set<string>();
+  const commits: ProjectCommit[] = [];
+  for (let i = 0; i < n; i++) {
+    const date = addDays(TODAY, -Math.floor(r() * span));
+    if (days.has(date)) continue; // one commit per day, mirroring live behaviour
+    days.add(date);
+    commits.push({ id: `${p.id}-c${i}`, date, note: GENERIC_COMMITS[Math.floor(r() * GENERIC_COMMITS.length)] });
+  }
+  commits.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return { tasks, commits, daysWorked: days.size };
+}
 
 export const workoutPlan: WorkoutPlanDay[] = [
   { weekday: 0, label: "Push", focus: "Chest · Shoulders · Triceps" },
