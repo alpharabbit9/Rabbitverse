@@ -11,7 +11,7 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-07-30_
+_Last updated: 2026-07-31_
 
 ---
 
@@ -55,8 +55,8 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 - 🟡 App shell — sidebar + mobile nav, section routing, greeting *(built; not behind auth)*
 - ✅ Theme system — dark default + light, theme toggle, design tokens
 - 🟡 PWA — web manifest present (`src/app/manifest.ts`); **service worker not added**
-- 🟡 Supabase client wiring — browser/server clients + `proxy.ts` session refresh built (`src/lib/supabase/`, `src/proxy.ts`); **Supabase project not created yet**
-- 🟡 Google OAuth + single-email allowlist — `/login`, `app/auth/actions.ts`, `auth/callback` built; needs a live project to test
+- ✅ Supabase client wiring — browser/server clients + `proxy.ts` session refresh; **live project connected, migrations `0001`+`0002` applied**
+- 🟡 Google OAuth + single-email allowlist — `/login`, `app/auth/actions.ts`, `auth/callback` built against the live project; end-to-end sign-in still to be exercised
 - ✅ Row-Level Security (RLS) — full schema + policies + on-signup seed trigger in `supabase/migrations/0001_init.sql`
 
 ### Phase 2 — Reusable primitives
@@ -69,7 +69,7 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 ### Phase 3 — Sections (schema + inputs + graphs + heatmap each)
 - ✅ Expenses — real reads + inline log form (`quick-add/actions.ts` `addExpense`)
 - ✅ Projects — real reads + rich detail: goals/vision, **task checklist** (drives progress %), **dated written updates ("commits") = days worked**, start→finish dates. Detail route `/projects/[id]`. Needs migration `0002` applied.
-- ✅ Workout — real reads + mark today done/rest + weight/body-fat logging (per-exercise still Phase 1.5)
+- ✅ Workout — real reads + mark today done/rest + weight/body-fat logging + **height setter** (unlocks BMI) (per-exercise still Phase 1.5)
 - ✅ Mental Health — real reads + mood(1–5) + journal upsert
 
 ### Phase 4 — All / Dashboard
@@ -79,7 +79,7 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 ### Phase 5 — Mood Mode & mascot wiring
 - ✅ Life-score / mood-state engine (`src/lib/life-score.ts`) — computes score & tone from signals (real in live mode)
 - ✅ Mascot state derived from activity/streak
-- 🟡 Mood Mode aura (`components/mood-mode.tsx`) still reads sample `mood` — cosmetic; wire to real signals next
+- ✅ Mood Mode aura (`components/mood-mode.tsx`) — now driven by real signals: `getMoodState` computes the week's `MoodState` and the `(app)` layout sets `<html data-mood>` app-wide (sample mood in demo)
 
 ### Phase 6 — Reminders
 - ⬜ Web Push subscription storage
@@ -124,6 +124,21 @@ service worker, push subscription code.
 ## 5. Session Log
 
 > Newest first. Each entry: date · what changed · what's next.
+
+### 2026-07-31 — Live DB confirmed · height input · Mood Mode wired to real signals
+- **Supabase is live:** the real project is connected with migrations `0001`+`0002` already applied,
+  so the app runs on real data when signed in. Updated the roadmap ticks accordingly.
+- **Height input (BMI):** `profiles.height_cm` had no way to be set, so BMI was stuck at "—". Added a
+  `saveHeight` Server Action (`workout/actions.ts`, validates 50–260 cm, updates `profiles`) and a
+  `HeightForm` shown in the Workout "Body stats" panel next to weight (prefilled/Update when set).
+- **Mood Mode → real signals (Phase 5 closed):** `getMoodState(today)` (`lib/data/queries.ts`) computes
+  the week's `MoodState` from the same signal blend as the overview. `MoodMode` now takes the mood as a
+  prop; moved its render from the root layout into the `(app)` layout so the `<html data-mood>` aura
+  reflects real signals on every app page (sample mood in demo, neutral glow on `/login`).
+- `tsc --noEmit` + `eslint` clean. Signed-in UI (height form, live aura) not browser-verified this
+  session — needs an authenticated session + the port a concurrent dev server was holding.
+- **Next:** exercise Google sign-in end-to-end, then the last V1 feature — reminders (service worker +
+  Web Push subscribe + `pg_cron`/Edge Function). PWA service worker is still the remaining gap.
 
 ### 2026-07-30 — Projects: goals, task checklist, and dated update-commits
 - **New migration `supabase/migrations/0002_project_details.sql` (additive, idempotent):** adds a

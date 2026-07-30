@@ -3,7 +3,6 @@ import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SmoothScroll } from "@/components/smooth-scroll";
-import { MoodMode } from "@/components/mood-mode";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
@@ -36,7 +35,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-dvh antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} themes={["light", "dark"]}>
           <SmoothScroll />
-          <MoodMode />
           {children}
           <Toaster position="top-center" toastOptions={{ style: { background: "var(--card-solid)", border: "1px solid var(--border)", color: "var(--fg)" } }} />
         </ThemeProvider>

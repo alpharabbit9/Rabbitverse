@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
-import { logWeight, setTodayWorkout, type LogResult } from "./actions";
+import { logWeight, saveHeight, setTodayWorkout, type LogResult } from "./actions";
 
 const INITIAL: LogResult = { ok: false, error: null };
 
@@ -110,6 +110,42 @@ export function WeightForm({ latestWeight }: { latestWeight?: number }) {
         className="rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
       >
         {pending ? "Saving…" : "Log"}
+      </button>
+    </form>
+  );
+}
+
+/** Set the profile height (cm) once — this is what unlocks the BMI number. */
+export function HeightForm({ heightCm }: { heightCm: number | null }) {
+  const [state, action, pending] = useActionState(saveHeight, INITIAL);
+
+  useEffect(() => {
+    if (state.ok) toast.success("Height saved ✓");
+    else if (state.error) toast.error(state.error);
+  }, [state]);
+
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <label className="flex-1">
+        <span className="mb-1 block text-xs text-fg-secondary">Height (cm)</span>
+        <input
+          name="height"
+          type="number"
+          step="0.1"
+          min="50"
+          max="260"
+          required
+          defaultValue={heightCm ?? ""}
+          placeholder="175"
+          className="w-full rounded-xl border border-border bg-card-hover/60 px-3 py-2.5 text-sm outline-none focus:border-border-strong"
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg disabled:opacity-60"
+      >
+        {pending ? "Saving…" : heightCm ? "Update" : "Save"}
       </button>
     </form>
   );

@@ -371,6 +371,41 @@ export async function getOverviewData(today: string): Promise<OverviewData> {
   };
 }
 
+/**
+ * The week's Mood State on its own — the same signal blend getOverviewData uses,
+ * but trimmed to what feeds moodState(). Rendered app-wide so the ambient aura
+ * (<html data-mood>) reflects real signals on every page, not just the overview.
+ */
+export async function getMoodState(today: string): Promise<ReturnType<typeof moodState>> {
+  const supabase = await createClient();
+  const start = addDays(today, -HEATMAP_DAYS);
+
+  const [{ data: expRows }, { data: projRows }, { data: projLogs }, { data: woRows }, { data: jrnRows }] =
+    await Promise.all([
+      supabase.from("expenses").select("id,spent_at,amount,note,category_id").gte("spent_at", start).order("spent_at"),
+      supabase.from("projects").select("*").order("status").order("created_at"),
+      supabase.from("project_logs").select("log_date").gte("log_date", start),
+      supabase.from("workout_logs").select("log_date,done,plan_label,note").gte("log_date", start).order("log_date"),
+      supabase.from("journal_entries").select("id,entry_date,mood,body").gte("entry_date", start).order("entry_date"),
+    ]);
+
+  const expenses = shapeExpenses(expRows);
+  const projects = shapeProjects(projRows);
+  const workoutLogs = shapeWorkoutLogs(woRows);
+  const journal = shapeJournal(jrnRows);
+
+  const byDate = new Map<string, Partial<SectionCounts>>();
+  for (const e of expenses) bump(byDate, e.date, "expenses");
+  for (const l of projLogs ?? []) bump(byDate, String(l.log_date), "projects");
+  for (const w of workoutLogs) if (w.done) bump(byDate, w.date, "workout");
+  for (const j of journal) bump(byDate, j.date, "mental");
+  const activity = buildActivity(start, today, byDate);
+
+  const streakDays = computeStreak(activity, today);
+  const signals = computeSignals({ projects, workoutLogs, expenses, journal, activity, budget: WEEKLY_BUDGET, today, streakDays });
+  return moodState(signals, lifeScore(signals));
+}
+
 function buildTodayTimeline(
   today: string,
   d: { expenses: Expense[]; workoutLogs: WorkoutLog[]; projects: Project[]; journal: JournalEntry[] },

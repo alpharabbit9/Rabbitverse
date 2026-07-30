@@ -5,7 +5,7 @@ import type { BodyMetric, DayActivity, WorkoutLog, WorkoutPlanDay } from "@/lib/
 import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { TrendChart } from "@/components/charts/trend-chart";
-import { TodayWorkoutForm, WeightForm } from "./workout-forms";
+import { HeightForm, TodayWorkoutForm, WeightForm } from "./workout-forms";
 
 const WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -50,8 +50,13 @@ export function WorkoutView({
           <Panel title="Today's session" subtitle={todayPlan ? `${todayPlan.label} · ${todayPlan.focus}` : "Log your training"}>
             <TodayWorkoutForm planLabel={todayPlan?.label ?? "workout"} status={todayStatus} />
           </Panel>
-          <Panel title="Body weight" subtitle="Track your trend over time">
-            <WeightForm latestWeight={latest?.weightKg} />
+          <Panel title="Body stats" subtitle="Weight logs daily · height sets your BMI">
+            <div className="space-y-4">
+              <WeightForm latestWeight={latest?.weightKg} />
+              <div className="border-t border-border pt-4">
+                <HeightForm heightCm={heightCm} />
+              </div>
+            </div>
           </Panel>
         </div>
       )}

@@ -57,3 +57,18 @@ export async function logWeight(_prev: LogResult, formData: FormData): Promise<L
   revalidateAll();
   return { ok: true, error: null };
 }
+
+/** Set the profile height (cm) — a one-time body stat that unlocks the BMI number. */
+export async function saveHeight(_prev: LogResult, formData: FormData): Promise<LogResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const height = Number(formData.get("height"));
+  if (!height || height < 50 || height > 260) return { ok: false, error: "Enter a height in cm (50–260)." };
+
+  const { error } = await supabase.from("profiles").update({ height_cm: height }).eq("id", user.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAll();
+  return { ok: true, error: null };
+}
