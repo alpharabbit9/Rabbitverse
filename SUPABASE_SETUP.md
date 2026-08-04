@@ -39,3 +39,45 @@ Only the `ALLOWED_EMAIL` account is let through; anyone else is bounced with a m
 > Deploying to Vercel later: add the same env vars in the Vercel project, set
 > `NEXT_PUBLIC_SITE_URL` to your Vercel URL, and add that URL to the Supabase redirect list
 > and Google authorized redirect URIs.
+
+## 6. Daily reminders (Web Push) — optional but part of v1
+
+The app already has: a service worker (`public/sw.js`), a subscribe toggle in
+**Settings → Reminders**, and server actions that store each device's
+subscription in `push_subscriptions`. To make the scheduled push actually fire,
+finish these one-time steps:
+
+1. **Generate a VAPID keypair** (once):
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+   Copy the **public** key into `.env.local` as `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+   (and into Vercel env). Keep the **private** key for step 3.
+
+2. **Apply the reminders migration:** open `supabase/migrations/0003_reminders.sql`,
+   replace `<PROJECT_REF>` and `<CRON_SECRET>` (any long random string), then run
+   it in the SQL editor. It enables `pg_cron` + `pg_net` and schedules the sender
+   every minute.
+
+3. **Set the Edge Function secrets** (Supabase CLI, from the repo root):
+   ```bash
+   supabase secrets set \
+     PROJECT_URL=https://<PROJECT_REF>.supabase.co \
+     SERVICE_ROLE_KEY=<service-role-key> \
+     VAPID_PUBLIC_KEY=<public-key> \
+     VAPID_PRIVATE_KEY=<private-key> \
+     VAPID_SUBJECT=mailto:you@example.com \
+     CRON_SECRET=<same-secret-as-step-2>
+   ```
+
+4. **Deploy the function:**
+   ```bash
+   supabase functions deploy send-reminders --no-verify-jwt
+   ```
+
+5. **Turn it on:** in the app → **Settings → Reminders**, flip the toggle (grant
+   the notification permission) and set your time. On iPhone, first **Add to Home
+   Screen** — iOS only allows Web Push for an installed PWA.
+
+Test without waiting for the clock: temporarily set your reminder time to the
+next minute, or `curl` the function with the `x-cron-secret` header.

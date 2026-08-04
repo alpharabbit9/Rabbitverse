@@ -1,6 +1,6 @@
 import { addDays, dhakaToday, eachDay } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getOverviewData } from "@/lib/data/queries";
+import { getOverviewData } from "@/lib/data/overview";
 import { headline, rabbitSays, rabbitStateFor } from "@/lib/motivation";
 import {
   activity,

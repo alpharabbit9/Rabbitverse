@@ -1,6 +1,6 @@
 import { dhakaToday } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getProjectsData } from "@/lib/data/queries";
+import { getProjectsData } from "@/lib/data/projects";
 import { activity as sampleActivity, projects as sampleProjects } from "@/lib/sample-data";
 import { ProjectsView } from "./projects-view";
 

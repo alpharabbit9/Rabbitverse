@@ -1,12 +1,22 @@
 import { dhakaToday } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getProfileSummary } from "@/lib/data/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getProfileSummary } from "@/lib/data/profile";
 import { profile as sampleProfile } from "@/lib/sample-data";
 import { Panel } from "@/components/dashboard/panel";
 import { ThemeOrb } from "@/components/theme-orb";
 import { Icon } from "@/components/icon";
 import { ProfileAvatar } from "@/components/layout/profile-avatar";
+import { RemindersCard } from "@/components/settings/reminders-card";
 import { signOut } from "@/app/auth/actions";
+
+/** Read the saved Dhaka-local reminder time from profiles.settings (default 21:00). */
+async function getReminderTime(): Promise<string> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("profiles").select("settings").maybeSingle();
+  const settings = (data?.settings ?? {}) as { reminderTime?: string };
+  return settings.reminderTime ?? "21:00";
+}
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -21,6 +31,7 @@ export default async function SettingsPage() {
   const p = isSupabaseConfigured
     ? await getProfileSummary(dhakaToday())
     : { name: sampleProfile.name, email: null, avatarUrl: null, level: sampleProfile.level, streakDays: sampleProfile.streakDays, xp: 0, xpToNext: 1 };
+  const reminderTime = isSupabaseConfigured ? await getReminderTime() : "21:00";
 
   return (
     <div className="space-y-6">
@@ -53,7 +64,20 @@ export default async function SettingsPage() {
         <Panel title="Preferences">
           <Row label="Currency" value="৳ BDT" />
           <Row label="Timezone" value="Asia/Dhaka (UTC+6)" />
-          <Row label="Daily reminder" value="9:00 PM" />
+        </Panel>
+
+        <Panel title="Reminders">
+          {isSupabaseConfigured ? (
+            <RemindersCard initialTime={reminderTime} />
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm">
+              <Icon name="Bell" size={18} style={{ color: "var(--accent-orange)" }} />
+              <div>
+                <div className="font-medium">Sign in to enable reminders</div>
+                <div className="text-xs text-fg-muted">Push notifications need a signed-in account and a configured VAPID key.</div>
+              </div>
+            </div>
+          )}
         </Panel>
 
         <Panel title="Data">

@@ -27,8 +27,9 @@ export const SETTINGS_NAV: NavItem = {
 /** Bottom-tab items for mobile (center + button handled separately). */
 export const MOBILE_TABS: NavItem[] = [
   { href: "/", label: "Overview", icon: "Home", accent: "var(--primary)" },
-  { href: "/expenses", label: "Money", icon: "Wallet", section: "expenses", accent: "var(--accent-mint)" },
+  { href: "/projects", label: "Projects", icon: "FolderKanban", section: "projects", accent: "var(--accent-blue)" },
   { href: "/workout", label: "Body", icon: "Dumbbell", section: "workout", accent: "var(--accent-purple)" },
+  { href: "/expenses", label: "Money", icon: "Wallet", section: "expenses", accent: "var(--accent-mint)" },
   { href: "/mental-health", label: "Mind", icon: "HeartPulse", section: "mental", accent: "var(--accent-orange)" },
 ];
 

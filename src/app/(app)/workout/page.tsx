@@ -1,6 +1,6 @@
 import { dhakaToday } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getWorkoutData } from "@/lib/data/queries";
+import { getWorkoutData } from "@/lib/data/workout";
 import { activity as sampleActivity, bodyMetrics as sampleMetrics, heightCm as sampleHeight, workoutLogs as sampleLogs, workoutPlan as samplePlan } from "@/lib/sample-data";
 import { WorkoutView } from "./workout-view";
 

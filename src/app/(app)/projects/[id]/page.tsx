@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { dhakaToday } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getProjectDetail } from "@/lib/data/queries";
+import { getProjectDetail } from "@/lib/data/projects";
 import { activity as sampleActivity, projects as sampleProjects, sampleProjectDetail } from "@/lib/sample-data";
 import { ProjectDetailView } from "./project-detail-view";
 

@@ -11,7 +11,7 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-07-31_
+_Last updated: 2026-08-02_
 
 ---
 
@@ -52,9 +52,9 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 ## 3. Roadmap & progress
 
 ### Phase 1 — Foundation
-- 🟡 App shell — sidebar + mobile nav, section routing, greeting *(built; not behind auth)*
+- ✅ App shell — sidebar + mobile bottom-nav (now includes **Projects**), section routing, greeting; verified responsive 360→430px
 - ✅ Theme system — dark default + light, theme toggle, design tokens
-- 🟡 PWA — web manifest present (`src/app/manifest.ts`); **service worker not added**
+- ✅ PWA — manifest (`src/app/manifest.ts`) + **service worker** (`public/sw.js`: push + offline fallback), registered app-wide, `/offline` route
 - ✅ Supabase client wiring — browser/server clients + `proxy.ts` session refresh; **live project connected, migrations `0001`+`0002` applied**
 - 🟡 Google OAuth + single-email allowlist — `/login`, `app/auth/actions.ts`, `auth/callback` built against the live project; end-to-end sign-in still to be exercised
 - ✅ Row-Level Security (RLS) — full schema + policies + on-signup seed trigger in `supabase/migrations/0001_init.sql`
@@ -82,8 +82,8 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 - ✅ Mood Mode aura (`components/mood-mode.tsx`) — now driven by real signals: `getMoodState` computes the week's `MoodState` and the `(app)` layout sets `<html data-mood>` app-wide (sample mood in demo)
 
 ### Phase 6 — Reminders
-- ⬜ Web Push subscription storage
-- ⬜ Supabase `pg_cron` + Edge Function sending VAPID push at Dhaka-local reminder time
+- 🟡 Web Push subscription storage — **code-complete**: client subscribe helpers (`src/lib/push.ts`), Settings → Reminders toggle + time picker (`components/settings/reminders-card.tsx`), server actions storing/removing subscriptions + saving reminder time (`settings/actions.ts`). Needs `NEXT_PUBLIC_VAPID_PUBLIC_KEY` set.
+- 🟡 Supabase `pg_cron` + Edge Function sending VAPID push — **code-complete**: Edge Function `supabase/functions/send-reminders/index.ts` + cron migration `0003_reminders.sql`. Needs VAPID keys generated, function secrets set, function deployed, and migration `0003` run (steps in `SUPABASE_SETUP.md` §6).
 
 ### Phase 1.5 (after v1)
 - ⬜ Per-exercise logging (sets/reps/weight) + strength graphs
@@ -99,8 +99,8 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 ## 4. Current-state snapshot (what exists in the code today)
 
 **Each page is a server component that reads real Supabase rows when signed in, and falls back to
-`src/lib/sample-data.ts` (a seeded PRNG) in demo mode — via `lib/data/queries.ts` + `lib/aggregate.ts`
-and per-section `*-view.tsx` client components + `actions.ts` Server Actions.**
+`src/lib/sample-data.ts` (a seeded PRNG) in demo mode — via the per-feature `lib/data/*` fetchers +
+`lib/aggregate.ts` and per-section `*-view.tsx` client components + `actions.ts` Server Actions.**
 
 - **App shell:** `src/app/(app)/layout.tsx`, `components/layout/sidebar.tsx`, `mobile-nav.tsx`
 - **Pages:** All/overview `(app)/page.tsx`; `projects`, `workout`, `expenses`, `mental-health`,
@@ -124,6 +124,36 @@ service worker, push subscription code.
 ## 5. Session Log
 
 > Newest first. Each entry: date · what changed · what's next.
+
+### 2026-08-02 — Data layer split per feature
+- Broke the single `lib/data/queries.ts` (~480 lines) into per-feature modules under `lib/data/`:
+  `expenses.ts`, `projects.ts` (list + detail), `workout.ts`, `mental.ts`, `overview.ts`
+  (overview + `getMoodState` + timeline helper), and `profile.ts`. Shared constants
+  (`WEEKLY_BUDGET`, `HEATMAP_DAYS`) and the row→domain shapers moved to `lib/data/shared.ts`.
+- Updated all 8 import sites; deleted `queries.ts`. Pure refactor, no behavior change. `tsc --noEmit` clean.
+- Rationale: `queries.ts` was the file most likely to become a dump; splitting it keeps each feature's
+  read path in one place. Deferred a fuller modular restructure — not worth it at this scale.
+
+### 2026-08-02 — Reminders (code-complete) · service worker/PWA · mobile Projects tab · responsiveness verified
+- **Data layer refactor (from a parallel session, now integrated):** `lib/data/queries.ts` was split
+  into per-feature modules (`overview.ts`, `profile.ts`, `expenses.ts`, `projects.ts`, `workout.ts`,
+  `mental.ts`, `shared.ts`); pages import from those. `getMoodState` now lives in `overview.ts`.
+- **Service worker + PWA (Phase 1 closed):** `public/sw.js` handles Web Push (`push` +
+  `notificationclick`) and a network-first navigation fallback to a new `/offline` route; registered
+  app-wide via `components/pwa/service-worker-register.tsx`. `/offline` added to the proxy allowlist.
+- **Reminders (Phase 6, code-complete — needs deploy):** client subscribe/unsubscribe helpers
+  (`lib/push.ts`), a Settings → Reminders card with an on/off push toggle + Dhaka-local time picker,
+  server actions (`settings/actions.ts`: `savePushSubscription` / `deletePushSubscription` /
+  `saveReminderTime`), a Deno Edge Function `send-reminders` that pushes to due users each minute, and
+  cron migration `0003_reminders.sql`. Deploy steps in `SUPABASE_SETUP.md` §6; `.env.local.example`
+  gains `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. `supabase/functions` excluded from `tsc`/eslint.
+- **Mobile nav:** added the **Projects** tab (5 tabs + center +); fits to 360px.
+- **Responsiveness:** verified in-browser (forced demo mode) at 360 / 375 / 430px across all routes —
+  zero horizontal overflow; heatmap scrolls within its own container.
+- `tsc --noEmit` clean; eslint has 2 **pre-existing** `set-state-in-effect` errors in untouched files
+  (`theme-toggle.tsx`, `count-up.tsx`) — no new lint errors from this work.
+- **Next:** generate VAPID keys + deploy the reminders function/cron, then exercise Google sign-in
+  end-to-end. That closes v1.
 
 ### 2026-07-31 — Live DB confirmed · height input · Mood Mode wired to real signals
 - **Supabase is live:** the real project is connected with migrations `0001`+`0002` already applied,

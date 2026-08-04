@@ -1,12 +1,14 @@
 import { dhakaToday } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getMoodState, getProfileSummary } from "@/lib/data/queries";
+import { getMoodState } from "@/lib/data/overview";
+import { getProfileSummary } from "@/lib/data/profile";
 import { mood as sampleMood, profile as sampleProfile } from "@/lib/sample-data";
 import { Sidebar, type ProfileChip } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { DesktopTopbar } from "@/components/layout/desktop-topbar";
 import { MoodMode } from "@/components/mood-mode";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const today = dhakaToday();
@@ -27,6 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-dvh">
       <MoodMode mood={mood} />
+      <ServiceWorkerRegister />
       <Sidebar profile={chip} />
       <div className="lg:pl-72">
         <MobileHeader />

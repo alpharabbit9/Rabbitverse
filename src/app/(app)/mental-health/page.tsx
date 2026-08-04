@@ -1,6 +1,6 @@
 import { dhakaToday } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getMentalData } from "@/lib/data/queries";
+import { getMentalData } from "@/lib/data/mental";
 import { activity as sampleActivity, journal as sampleJournal } from "@/lib/sample-data";
 import { MentalView } from "./mental-view";
 

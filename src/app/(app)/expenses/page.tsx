@@ -1,7 +1,7 @@
 import { addDays, dhakaToday, shortDate } from "@/lib/dates";
 import { taka } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getExpensesData } from "@/lib/data/queries";
+import { getExpensesData } from "@/lib/data/expenses";
 import { activity as sampleActivity, categories as sampleCategories, expenses as sampleExpenses } from "@/lib/sample-data";
 import { Panel } from "@/components/dashboard/panel";
 import { Icon } from "@/components/icon";
