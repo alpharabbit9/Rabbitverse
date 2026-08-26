@@ -4,7 +4,7 @@
   stable. When real persistence lands, this module is swapped for Supabase
   selectors with the same shapes.
 */
-import { addDays, dhakaToday, eachDay, parseDay, weekdayMon0 } from "./dates";
+import { addDays, eachDay, parseDay, todayIn, weekdayMon0 } from "./dates";
 import { lifeScore, moodState, scoreLabel, type LifeSignals } from "./life-score";
 import type {
   BodyMetric,
@@ -33,7 +33,7 @@ function mulberry32(seed: number) {
 }
 const seedFromIso = (iso: string) => Number(iso.replace(/-/g, ""));
 
-const TODAY = dhakaToday();
+const TODAY = todayIn();
 const YEAR_AGO = addDays(TODAY, -363);
 
 export const profile: Profile = {
@@ -53,13 +53,25 @@ export const categories: ExpenseCategory[] = [
   { id: "other", name: "Other", color: "var(--accent-cyan)", icon: "Sparkles" },
 ];
 
+/*
+  Every `current` sits on a multiple of 20% of its target. `sampleProjectDetail`
+  fabricates a 5-item checklist from that percentage, and the detail page's ring
+  is checklist-driven — off-boundary numbers made the list card and the detail
+  ring quote two different percentages for the same project. (Live mode has no
+  such gap: `recomputeProgress` writes the checklist percentage into
+  `current_value` itself.)
+
+  A few of these carry an `targetDate` (estimated finish) so the demo exercises
+  the V2 target warnings: p1 is deliberately overdue, p4 behind pace, p2/p5 on
+  pace, and p3/p6 have no date at all (which must produce no warning).
+*/
 export const projects: Project[] = [
-  { id: "p1", name: "Rabbit Verse App", description: "Ship v1 of the life dashboard", targetValue: 100, targetUnit: "%", current: 62, status: "ongoing", startDate: addDays(TODAY, -40) },
-  { id: "p2", name: "Read 20 Books", description: "2026 reading goal", targetValue: 20, targetUnit: "books", current: 11, status: "ongoing", startDate: addDays(TODAY, -180) },
+  { id: "p1", name: "Rabbit Verse App", description: "Ship v1 of the life dashboard", targetValue: 100, targetUnit: "%", current: 60, status: "ongoing", startDate: addDays(TODAY, -40), targetDate: addDays(TODAY, -3) },
+  { id: "p2", name: "Read 20 Books", description: "2026 reading goal", targetValue: 20, targetUnit: "books", current: 12, status: "ongoing", startDate: addDays(TODAY, -180), targetDate: addDays(TODAY, 185) },
   { id: "p3", name: "Learn Spanish", description: "Daily practice sessions", targetValue: 60, targetUnit: "sessions", current: 24, status: "ongoing", startDate: addDays(TODAY, -70) },
-  { id: "p4", name: "Portfolio Site", description: "Personal portfolio redesign", targetValue: 100, targetUnit: "%", current: 45, status: "ongoing", startDate: addDays(TODAY, -25) },
-  { id: "p5", name: "Write 30k Words", description: "Blog + essays", targetValue: 30000, targetUnit: "words", current: 18400, status: "ongoing", startDate: addDays(TODAY, -55) },
-  { id: "p6", name: "Save ৳50k", description: "Emergency fund", targetValue: 50000, targetUnit: "৳", current: 31000, status: "ongoing", startDate: addDays(TODAY, -90) },
+  { id: "p4", name: "Portfolio Site", description: "Personal portfolio redesign", targetValue: 100, targetUnit: "%", current: 40, status: "ongoing", startDate: addDays(TODAY, -25), targetDate: addDays(TODAY, 5) },
+  { id: "p5", name: "Write 30k Words", description: "Blog + essays", targetValue: 30000, targetUnit: "words", current: 24000, status: "ongoing", startDate: addDays(TODAY, -55), targetDate: addDays(TODAY, 35) },
+  { id: "p6", name: "Save ৳50k", description: "Emergency fund", targetValue: 50000, targetUnit: "৳", current: 40000, status: "ongoing", startDate: addDays(TODAY, -90) },
   { id: "p7", name: "Portfolio Photoshoot", description: "Done and delivered", targetValue: 100, targetUnit: "%", current: 100, status: "completed", startDate: addDays(TODAY, -120) },
   { id: "p8", name: "React Course", description: "Completed advanced React", targetValue: 100, targetUnit: "%", current: 100, status: "completed", startDate: addDays(TODAY, -150) },
 ];

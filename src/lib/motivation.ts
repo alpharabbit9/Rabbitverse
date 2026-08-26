@@ -1,7 +1,8 @@
-import type { RabbitState } from "@/components/mascot/rabbit";
+import type { MascotState } from "@/components/mascot/types";
 import type { LifeSignals } from "./life-score";
+import type { TargetLevel } from "./targets";
 import type { DayActivity, MoodState } from "./types";
-import { taka } from "./utils";
+import { money, type MoneyOptions } from "./money";
 
 /*
   Rule-based encouragement engine. Data-aware, templated messages that feel
@@ -16,10 +17,19 @@ export function headline(signals: LifeSignals, deltaVsLastWeek: number): string 
   return "Here's how your life is going today.";
 }
 
-export function rabbitStateFor(todayActivity: DayActivity | undefined, score: number): RabbitState {
+/**
+ * The mascot's pose — whichever creature the user picked wears it. `targetLevel`
+ * holds back the celebration when something is off-track: the mascot still runs,
+ * it just doesn't throw a party while a deadline is blown or a cap is busted.
+ */
+export function mascotStateFor(
+  todayActivity: DayActivity | undefined,
+  score: number,
+  targetLevel: TargetLevel = "ok",
+): MascotState {
   const total = todayActivity ? Object.values(todayActivity.counts).reduce((a, b) => a + b, 0) : 0;
   if (total === 0) return "sleeping";
-  if (score >= 95) return "celebrating";
+  if (score >= 95) return targetLevel === "over" ? "running" : "celebrating";
   if (score >= 80) return "running";
   return "walking";
 }
@@ -30,8 +40,18 @@ export interface Insight {
   tone?: string;
 }
 
-/** "Rabbit says" — 2–3 context-aware lines from the week's signals. */
-export function rabbitSays(signals: LifeSignals, weekSpend: number, budget: number): Insight[] {
+/**
+ * "<Mascot> says" — 2–3 context-aware lines from the week's signals.
+ *
+ * `locale` carries the user's currency and language tag so the budget line is
+ * formatted the way the rest of their app is; it defaults to BDT/en for demo.
+ */
+export function mascotSays(
+  signals: LifeSignals,
+  weekSpend: number,
+  budget: number,
+  locale: Pick<MoneyOptions, "currency" | "locale"> = {},
+): Insight[] {
   const out: Insight[] = [];
 
   if (signals.focus >= 70) {
@@ -45,9 +65,9 @@ export function rabbitSays(signals: LifeSignals, weekSpend: number, budget: numb
   }
 
   if (weekSpend > budget) {
-    out.push({ icon: "TrendingUp", text: `Spending is ${taka(weekSpend - budget, { compact: true })} over budget — worth a glance.`, tone: "var(--accent-orange)" });
+    out.push({ icon: "TrendingUp", text: `Spending is ${money(weekSpend - budget, { ...locale, compact: true })} over budget — worth a glance.`, tone: "var(--accent-orange)" });
   } else {
-    out.push({ icon: "Wallet", text: `Nicely under budget with ${taka(budget - weekSpend, { compact: true })} to spare.`, tone: "var(--accent-mint)" });
+    out.push({ icon: "Wallet", text: `Nicely under budget with ${money(budget - weekSpend, { ...locale, compact: true })} to spare.`, tone: "var(--accent-mint)" });
   }
 
   return out.slice(0, 3);

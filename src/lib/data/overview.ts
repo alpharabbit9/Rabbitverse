@@ -1,5 +1,8 @@
-import { addDays } from "@/lib/dates";
+import { addDays, startOfWeek } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
+import { getLocaleContext } from "@/lib/session";
+import type { LocaleContext } from "@/lib/locale";
+import { money } from "@/lib/money";
 import {
   activeDayCount,
   buildActivity,
@@ -11,7 +14,9 @@ import {
   type SectionCounts,
 } from "@/lib/aggregate";
 import { lifeScore, moodState, scoreLabel } from "@/lib/life-score";
-import { headline, rabbitSays, rabbitStateFor } from "@/lib/motivation";
+import { headline, mascotSays, mascotStateFor } from "@/lib/motivation";
+import { getTargets } from "@/lib/data/targets";
+import { computeTargetStatuses, worstLevel, type TargetStatus } from "@/lib/targets";
 import {
   HEATMAP_DAYS,
   WEEKLY_BUDGET,
@@ -49,9 +54,11 @@ export interface OverviewData {
   lifeBalance: { axis: string; you: number; ideal: number }[];
   todayTimeline: TimelineEvent[];
   headline: string;
-  insights: ReturnType<typeof rabbitSays>;
-  rabbitState: ReturnType<typeof rabbitStateFor>;
+  insights: ReturnType<typeof mascotSays>;
+  mascotState: ReturnType<typeof mascotStateFor>;
   weekSpend: number;
+  /** every target checked against reality — the Overview is the only full view */
+  statuses: TargetStatus[];
 }
 
 export async function getOverviewData(today: string): Promise<OverviewData> {
@@ -74,9 +81,15 @@ export async function getOverviewData(today: string): Promise<OverviewData> {
     supabase.from("workout_logs").select("log_date,done,plan_label,note").gte("log_date", start).order("log_date"),
     supabase.from("body_metrics").select("log_date,weight_kg,body_fat_pct").order("log_date"),
     supabase.from("journal_entries").select("id,entry_date,mood,body").gte("entry_date", start).order("entry_date"),
-    supabase.from("profiles").select("display_name").maybeSingle(),
+    supabase.from("user_profiles").select("display_name").maybeSingle(),
     supabase.auth.getUser(),
   ]);
+
+  // The weekly cap the money signal is scored against is the user's own target
+  // (Phase 4), falling back to WEEKLY_BUDGET when they've switched it off.
+  const targets = await getTargets();
+  const budget = targets.weeklyExpenseCap ?? WEEKLY_BUDGET;
+  const locale = await getLocaleContext();
 
   const expenses = shapeExpenses(expRows);
   const projects = shapeProjects(projRows);
@@ -93,11 +106,15 @@ export async function getOverviewData(today: string): Promise<OverviewData> {
   const activity = buildActivity(start, today, byDate);
 
   const streakDays = computeStreak(activity, today);
-  const base = { projects, workoutLogs, expenses, journal, activity, budget: WEEKLY_BUDGET };
+  const base = { projects, workoutLogs, expenses, journal, activity, budget };
   const signals = computeSignals({ ...base, today, streakDays });
   const score = lifeScore(signals);
   const scoreMeta = scoreLabel(score);
-  const mood = moodState(signals, score);
+  // Targets are checked before the mood/mascot are chosen, so being off-track
+  // can hold both back (Phase 7).
+  const statuses = computeTargetStatuses({ today, targets, expenses, workoutLogs, journal, projects, ...locale });
+  const worst = worstLevel(statuses);
+  const mood = moodState(signals, score, worst);
   const lifeTrend = computeLifeTrend(base, today, 30);
 
   const meta = user?.user?.user_metadata ?? {};
@@ -105,19 +122,20 @@ export async function getOverviewData(today: string): Promise<OverviewData> {
     prof?.display_name?.toString().split(" ")[0] ||
     (typeof meta.full_name === "string" ? meta.full_name.split(" ")[0] : "") ||
     (typeof meta.name === "string" ? meta.name.split(" ")[0] : "") ||
-    "Rifat";
+    user?.user?.email?.split("@")[0] ||
+    "Friend";
 
-  const last7 = new Set(
-    Array.from({ length: 7 }, (_, i) => addDays(today, -i)),
-  );
-  const weekSpend = expenses.filter((e) => last7.has(e.date)).reduce((a, e) => a + e.amount, 0);
+  // The user's week (Mon-start) — the same window the weekly cap is judged on,
+  // so "Rabbit says" can't disagree with the warning banner.
+  const weekStart = startOfWeek(today);
+  const weekSpend = expenses.filter((e) => e.date >= weekStart && e.date <= today).reduce((a, e) => a + e.amount, 0);
   const deltaVsLastWeek = score - (lifeTrend[lifeTrend.length - 8]?.value ?? score);
   const todayActivity = activity.find((a) => a.date === today);
 
   return {
     isDemo: false,
     profile: { name, level: progressionFromActiveDays(activeDayCount(activity)).level, streakDays },
-    budget: WEEKLY_BUDGET,
+    budget,
     projects,
     workoutLogs,
     bodyMetrics,
@@ -136,11 +154,12 @@ export async function getOverviewData(today: string): Promise<OverviewData> {
       { axis: "Spending", you: signals.money, ideal: 90 },
       { axis: "Mental", you: signals.mental, ideal: 90 },
     ],
-    todayTimeline: buildTodayTimeline(today, { expenses, workoutLogs, projects, journal }),
+    todayTimeline: buildTodayTimeline(today, { expenses, workoutLogs, projects, journal }, locale),
     headline: headline(signals, deltaVsLastWeek),
-    insights: rabbitSays(signals, weekSpend, WEEKLY_BUDGET),
-    rabbitState: rabbitStateFor(todayActivity, score),
+    insights: mascotSays(signals, weekSpend, budget, locale),
+    mascotState: mascotStateFor(todayActivity, score, worst),
     weekSpend,
+    statuses,
   };
 }
 
@@ -175,19 +194,25 @@ export async function getMoodState(today: string): Promise<ReturnType<typeof moo
   const activity = buildActivity(start, today, byDate);
 
   const streakDays = computeStreak(activity, today);
-  const signals = computeSignals({ projects, workoutLogs, expenses, journal, activity, budget: WEEKLY_BUDGET, today, streakDays });
-  return moodState(signals, lifeScore(signals));
+  const targets = await getTargets();
+  const budget = targets.weeklyExpenseCap ?? WEEKLY_BUDGET;
+  const signals = computeSignals({ projects, workoutLogs, expenses, journal, activity, budget, today, streakDays });
+  const worst = worstLevel(
+    computeTargetStatuses({ today, targets, expenses, workoutLogs, journal, projects, ...(await getLocaleContext()) }),
+  );
+  return moodState(signals, lifeScore(signals), worst);
 }
 
 function buildTodayTimeline(
   today: string,
   d: { expenses: Expense[]; workoutLogs: WorkoutLog[]; projects: Project[]; journal: JournalEntry[] },
+  locale: LocaleContext,
 ): TimelineEvent[] {
   const out: TimelineEvent[] = [];
   const todaysExpenses = d.expenses.filter((e) => e.date === today);
   if (todaysExpenses.length) {
     const total = todaysExpenses.reduce((a, e) => a + e.amount, 0);
-    out.push({ time: "—", section: "expenses", title: "Expenses logged", subtitle: `৳${total.toLocaleString("en-US")} · ${todaysExpenses.length} today` });
+    out.push({ time: "—", section: "expenses", title: "Expenses logged", subtitle: `${money(total, locale)} · ${todaysExpenses.length} today` });
   }
   const wo = d.workoutLogs.find((w) => w.date === today && w.done);
   if (wo) out.push({ time: "—", section: "workout", title: "Workout done", subtitle: wo.planLabel || "Trained today" });

@@ -2,6 +2,8 @@
 
 import { addDays, shortDate } from "@/lib/dates";
 import type { DayActivity, JournalEntry } from "@/lib/types";
+import type { TargetStatus } from "@/lib/targets";
+import { TargetWarnings } from "@/components/dashboard/target-warning";
 import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { TrendChart } from "@/components/charts/trend-chart";
@@ -13,27 +15,37 @@ export function MentalView({
   journal,
   activity,
   today,
+  statuses = [],
   canLog = false,
 }: {
   journal: JournalEntry[];
   activity: DayActivity[];
   today: string;
+  statuses?: TargetStatus[];
   canLog?: boolean;
 }) {
   const sorted = [...journal].sort((a, b) => (a.date < b.date ? -1 : 1));
   const moodTrend = sorted.map((j) => ({ label: shortDate(j.date), value: j.mood }));
-  const avgMood = journal.length ? +(journal.reduce((a, j) => a + j.mood, 0) / journal.length).toFixed(1) : 0;
   const recent = [...sorted].reverse().slice(0, 6);
+
+  // Averaged over the last 30 days, not all time. The fetch reaches back a full
+  // year, so an all-time mean is anchored by months you can no longer affect —
+  // a genuinely rough fortnight couldn't move the number in the header.
+  const since = addDays(today, -29);
+  const window = journal.filter((j) => j.date >= since && j.date <= today);
+  const avgMood = window.length ? +(window.reduce((a, j) => a + j.mood, 0) / window.length).toFixed(1) : 0;
 
   return (
     <div className="space-y-6 sm:space-y-7">
       <header>
         <h1 className="text-2xl font-bold tracking-tight">Mental Health</h1>
         <p className="mt-1 text-sm text-fg-secondary">
-          {avgMood ? `Average mood ${avgMood}/5 · ` : ""}
+          {avgMood ? `Average mood ${avgMood}/5 (30d) · ` : ""}
           {journal.length} reflection{journal.length === 1 ? "" : "s"}
         </p>
       </header>
+
+      <TargetWarnings statuses={statuses} />
 
       <Panel title="How was your day?" subtitle="Describe your day — a calm, private journal">
         {canLog ? (

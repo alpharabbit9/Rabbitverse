@@ -30,18 +30,27 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublic = path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/offline");
+  // Everything a signed-out visitor legitimately needs: sign in, sign up, get a
+  // password back, complete an email link, or read the suspension notice.
+  const PUBLIC = ["/login", "/signup", "/forgot-password", "/suspended", "/auth", "/offline"];
+  const isPublic = PUBLIC.some((p) => path === p || path.startsWith(`${p}/`));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
-  if (user && path.startsWith("/login")) {
+  // Signed in already? The sign-in and sign-up screens have nothing to offer.
+  if (user && (path.startsWith("/login") || path.startsWith("/signup") || path.startsWith("/forgot-password"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
   }
+
+  // Suspension is deliberately *not* checked here: it would cost a database
+  // round-trip on every single request. It is enforced where entry actually
+  // happens — `signInWithPassword`, `/auth/callback` — and again in
+  // `(app)/layout.tsx`, which already reads the roster via `getSession()`.
 
   return response;
 }

@@ -179,9 +179,14 @@ export function TaskRow({ task, canLog = false }: { task: ProjectTask; canLog?: 
   );
 }
 
-/** Write a dated progress update (a "commit"). */
-export function CommitComposer({ projectId }: { projectId: string }) {
+/**
+ * Write a dated progress update (a "commit"). Defaults to today but can be
+ * filed against yesterday — writing up last night's work this morning is the
+ * common case, and the action honours the same window as every other log.
+ */
+export function CommitComposer({ projectId, today, yesterday }: { projectId: string; today: string; yesterday: string }) {
   const [state, action, pending] = useActionState(addCommit, INITIAL);
+  const [day, setDay] = useState(today);
   const ref = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -196,21 +201,40 @@ export function CommitComposer({ projectId }: { projectId: string }) {
   return (
     <form ref={ref} action={action} className="space-y-2.5">
       <input type="hidden" name="project_id" value={projectId} />
+      <input type="hidden" name="log_date" value={day} />
       <textarea
         name="note"
         rows={3}
         required
         maxLength={2000}
-        placeholder="What did you get done today? This is logged as a dated update."
+        placeholder={day === today ? "What did you get done today? This is logged as a dated update." : "What did you get done yesterday?"}
         className={`${inputCls} resize-none`}
       />
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { v: today, label: "Today" },
+          { v: yesterday, label: "Yesterday" },
+        ].map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => setDay(o.v)}
+            aria-pressed={day === o.v}
+            className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+              day === o.v ? "border-border-strong bg-card-hover text-fg" : "border-border text-fg-secondary hover:text-fg"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
       <button
         type="submit"
         disabled={pending}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-blue to-accent-cyan px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
       >
         <Icon name="PenLine" size={16} />
-        {pending ? "Logging…" : "Log today's update"}
+        {pending ? "Logging…" : `Log ${day === today ? "today" : "yesterday"}'s update`}
       </button>
     </form>
   );

@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { addDays, dhakaToday } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
+import { currentDay } from "@/lib/session";
 
 export type LogResult = { ok: boolean; error: string | null };
 
@@ -18,9 +19,8 @@ export async function saveJournal(_prev: LogResult, formData: FormData): Promise
   if (!mood || mood < 1 || mood > 5) return { ok: false, error: "Pick how your day felt (1–5)." };
 
   const body = ((formData.get("body") as string) || "").trim().slice(0, 2000) || null;
-  const entryDate = (formData.get("entry_date") as string) || dhakaToday();
-
-  const today = dhakaToday();
+  const today = await currentDay();
+  const entryDate = (formData.get("entry_date") as string) || today;
   if (entryDate !== today && entryDate !== addDays(today, -1)) {
     return { ok: false, error: "You can only log today or yesterday." };
   }

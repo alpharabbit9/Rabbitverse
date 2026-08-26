@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { Sparkline } from "@/components/charts/sparkline";
@@ -10,6 +11,7 @@ export function SectionCard({
   primary,
   sub,
   spark,
+  badge,
 }: {
   href: string;
   icon: string;
@@ -18,12 +20,17 @@ export function SectionCard({
   primary: string;
   sub: string;
   spark: number[];
+  /** optional status pill, e.g. a TargetBadge when the section is off-track */
+  badge?: ReactNode;
 }) {
   return (
     <Link href={href} className="glass group flex flex-col justify-between gap-4 rounded-2xl p-5 transition-colors hover:border-border-strong">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-fg-secondary">{label}</span>
-        <span className="grid size-8 place-items-center rounded-lg bg-card-hover">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium text-fg-secondary">{label}</span>
+          {badge}
+        </span>
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-card-hover">
           <Icon name={icon} size={16} style={{ color: accent }} />
         </span>
       </div>

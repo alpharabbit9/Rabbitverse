@@ -4,6 +4,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { AiLogBox } from "@/components/quick-add/ai-log-box";
+import { useCurrencySymbol } from "@/components/locale-provider";
 import { cn } from "@/lib/utils";
 
 export type LogResult = { ok: boolean; error: string | null };
@@ -59,6 +61,14 @@ export function QuickAddHub({
           {demo ? "Preview the logging flow — sign in to save it for real." : "A few taps and it folds into your Life Score instantly."}
         </p>
       </header>
+
+      <AiLogBox demo={demo} categories={categories} projects={projects} today={today} yesterday={yesterday} />
+
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">or log it by hand</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
 
       {/* Tab switcher */}
       <div className="glass flex gap-1 rounded-2xl p-1.5">
@@ -167,6 +177,7 @@ function SubmitButton({ pending, children, from = "var(--accent-purple)", to = "
 // ---- Expense --------------------------------------------------------------
 
 function ExpenseForm({ demo, categories, today, yesterday, action }: { demo: boolean; categories: Cat[]; today: string; yesterday: string; action: Action }) {
+  const symbol = useCurrencySymbol();
   const [state, formAction, pending] = useActionState(action, INITIAL);
   const ref = useRef<HTMLFormElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
@@ -179,9 +190,9 @@ function ExpenseForm({ demo, categories, today, yesterday, action }: { demo: boo
   return (
     <form ref={ref} action={formAction} className="glass space-y-4 rounded-2xl p-5">
       <div>
-        <FieldLabel>Amount (৳)</FieldLabel>
+        <FieldLabel>Amount ({symbol})</FieldLabel>
         <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-fg-muted">৳</span>
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-fg-muted">{symbol}</span>
           <input ref={amountRef} name="amount" type="number" inputMode="decimal" min="1" step="1" required placeholder="450" className={cn(inputCls, "py-3 pl-8 text-lg font-semibold")} />
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -224,7 +235,8 @@ function ExpenseForm({ demo, categories, today, yesterday, action }: { demo: boo
 
 // ---- Project (new goal + log progress) ------------------------------------
 
-const UNITS = ["%", "books", "sessions", "words", "৳", "days", "km"];
+/** Goal units. The currency one is filled in from the user's profile at render. */
+const UNITS = ["%", "books", "sessions", "words", "days", "km"];
 
 function ProjectForms({ demo, projects, createAction, progressAction }: { demo: boolean; projects: Proj[]; createAction: Action; progressAction: Action }) {
   const [sub, setSub] = useState<"new" | "progress">(projects.length ? "progress" : "new");
@@ -250,6 +262,10 @@ function ProjectForms({ demo, projects, createAction, progressAction }: { demo: 
 }
 
 function NewGoalForm({ demo, action }: { demo: boolean; action: Action }) {
+  const symbol = useCurrencySymbol();
+  // A money goal ("Save ৳50k") is a unit like any other — it just has to be the
+  // user's own currency rather than a baked-in ৳.
+  const units = [...UNITS, symbol];
   const [state, formAction, pending] = useActionState(action, INITIAL);
   const [unit, setUnit] = useState("%");
   const ref = useRef<HTMLFormElement>(null);
@@ -272,7 +288,7 @@ function NewGoalForm({ demo, action }: { demo: boolean; action: Action }) {
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {UNITS.map((u) => (
+        {units.map((u) => (
           <button key={u} type="button" onClick={() => setUnit(u)} className={cn("rounded-lg border px-2.5 py-1 text-xs transition-colors", unit === u ? "border-border-strong bg-card-hover text-fg" : "border-border text-fg-secondary hover:text-fg")}>
             {u}
           </button>

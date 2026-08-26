@@ -1,7 +1,9 @@
-import { addDays, dhakaToday, eachDay } from "@/lib/dates";
+import { startOfWeek } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getOverviewData } from "@/lib/data/overview";
-import { headline, rabbitSays, rabbitStateFor } from "@/lib/motivation";
+import { DEFAULT_TARGETS, computeTargetStatuses, worstLevel } from "@/lib/targets";
+import { moodState } from "@/lib/life-score";
+import { headline, mascotSays, mascotStateFor } from "@/lib/motivation";
 import {
   activity,
   bodyMetrics,
@@ -9,7 +11,6 @@ import {
   journal,
   lifeBalance,
   lifeTrend,
-  mood,
   profile,
   projects,
   score,
@@ -19,11 +20,13 @@ import {
   workoutLogs,
 } from "@/lib/sample-data";
 import { OverviewView } from "./overview-view";
+import { currentDay } from "@/lib/session";
 
-const DEMO_BUDGET = 6000;
+/** Demo has no saved targets, so the weekly cap is the documented default. */
+const DEMO_BUDGET = DEFAULT_TARGETS.weeklyExpenseCap ?? 6000;
 
 export default async function OverviewPage() {
-  const today = dhakaToday();
+  const today = await currentDay();
 
   if (isSupabaseConfigured) {
     const data = await getOverviewData(today);
@@ -31,10 +34,14 @@ export default async function OverviewPage() {
   }
 
   // Demo mode: derive the motivation layer the same way the live path does.
-  const last7 = eachDay(addDays(today, -6), today);
-  const spendWeek = expenses.filter((e) => last7.includes(e.date)).reduce((a, e) => a + e.amount, 0);
+  const weekStart = startOfWeek(today);
+  const spendWeek = expenses.filter((e) => e.date >= weekStart && e.date <= today).reduce((a, e) => a + e.amount, 0);
   const deltaVsLastWeek = score - (lifeTrend[lifeTrend.length - 8]?.value ?? score);
   const todayActivity = activity.find((a) => a.date === today);
+  // Demo evaluates the default targets against the sample rows, so the warnings
+  // (and the mood/mascot nudge they cause) behave exactly as they do live.
+  const statuses = computeTargetStatuses({ today, targets: DEFAULT_TARGETS, expenses, workoutLogs, journal, projects });
+  const worst = worstLevel(statuses);
 
   return (
     <OverviewView
@@ -51,13 +58,14 @@ export default async function OverviewPage() {
       signals={signals}
       score={score}
       scoreMeta={scoreMeta}
-      mood={mood}
+      mood={moodState(signals, score, worst)}
       lifeTrend={lifeTrend}
       lifeBalance={lifeBalance}
       todayTimeline={todayTimeline}
       headline={headline(signals, deltaVsLastWeek)}
-      insights={rabbitSays(signals, spendWeek, DEMO_BUDGET)}
-      rabbitState={rabbitStateFor(todayActivity, score)}
+      insights={mascotSays(signals, spendWeek, DEMO_BUDGET)}
+      mascotState={mascotStateFor(todayActivity, score, worst)}
+      statuses={statuses}
     />
   );
 }

@@ -28,12 +28,29 @@ const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-/** Current wall-clock time in Asia/Dhaka (UTC+6, no DST) as "HH:MM". */
-function dhakaHHMM(): string {
-  const now = new Date(Date.now() + 6 * 60 * 60 * 1000);
-  const hh = String(now.getUTCHours()).padStart(2, "0");
-  const mm = String(now.getUTCMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
+/**
+ * Current wall-clock "HH:MM" in an arbitrary IANA zone.
+ *
+ * Users choose their own timezone (migration 0004), so a reminder set for 21:00
+ * must fire at 21:00 *where they are* — not at Dhaka's. Intl handles DST, which
+ * the old fixed +6 offset could not.
+ */
+function localHHMM(tz: string, now = new Date()): string {
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(now);
+  } catch {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Dhaka",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(now);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -43,17 +60,25 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(PROJECT_URL, SERVICE_ROLE_KEY);
-  const target = dhakaHHMM();
+  const now = new Date();
 
-  // Users whose reminder time is this exact minute.
+  // Every profile that has a reminder set. The minute comparison can no longer
+  // be pushed into the query, because "is it 21:00?" now has a different answer
+  // per user — so we filter in memory. Only users with a reminder time are
+  // fetched, which keeps this small.
   const { data: profiles, error } = await supabase
-    .from("profiles")
-    .select("id, settings")
-    .eq("settings->>reminderTime", target);
+    .from("user_profiles")
+    .select("id, settings, timezone")
+    .not("settings->>reminderTime", "is", null);
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-  if (!profiles?.length) return new Response(JSON.stringify({ sent: 0, target }), { status: 200 });
 
-  const userIds = profiles.map((p) => p.id);
+  const due = (profiles ?? []).filter((p) => {
+    const wanted = (p.settings as { reminderTime?: string } | null)?.reminderTime;
+    return Boolean(wanted) && wanted === localHHMM(p.timezone ?? "Asia/Dhaka", now);
+  });
+  if (!due.length) return new Response(JSON.stringify({ sent: 0, due: 0 }), { status: 200 });
+
+  const userIds = due.map((p) => p.id);
   const { data: subs } = await supabase
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
@@ -81,7 +106,7 @@ Deno.serve(async (req) => {
   }
   if (dead.length) await supabase.from("push_subscriptions").delete().in("id", dead);
 
-  return new Response(JSON.stringify({ sent, pruned: dead.length, target }), {
+  return new Response(JSON.stringify({ sent, pruned: dead.length, due: due.length }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });

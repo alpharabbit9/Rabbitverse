@@ -1,26 +1,33 @@
 /*
-  Date helpers pinned to Asia/Dhaka (UTC+6). All "today / yesterday", streaks,
-  heatmap buckets, and reminder logic in Rabbit Verse must use Dhaka local time,
-  never the server/UTC clock. These helpers are dependency-free (Intl-based).
+  Date helpers. All "today / yesterday", streaks, heatmap buckets, and reminder
+  logic in Rabbit Verse must use the *user's own* local time, never the
+  server/UTC clock — a user in London logging at 23:00 must not have their day
+  roll over at Dhaka's midnight. Dependency-free (Intl-based).
+
+  Only four helpers below actually ask "what time is it now", and each takes a
+  timezone. Everything else operates on ISO day strings ("yyyy-mm-dd") and is
+  timezone-free by construction — do not add a `tz` parameter to those.
+
+  The defaults keep Rifat's original Dhaka behaviour bit-identical.
 */
 
-export const TZ = "Asia/Dhaka";
+export const DEFAULT_TZ = "Asia/Dhaka";
 
-/** Today's calendar date in Dhaka as "yyyy-mm-dd". */
-export function dhakaToday(now: Date = new Date()): string {
+/** Today's calendar date in `tz` as "yyyy-mm-dd". */
+export function todayIn(tz: string = DEFAULT_TZ, now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
+    timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(now);
 }
 
-/** The current hour (0-23) in Dhaka. */
-export function dhakaHour(now: Date = new Date()): number {
+/** The current hour (0-23) in `tz`. */
+export function hourIn(tz: string = DEFAULT_TZ, now: Date = new Date()): number {
   return Number(
     new Intl.DateTimeFormat("en-GB", {
-      timeZone: TZ,
+      timeZone: tz,
       hour: "2-digit",
       hour12: false,
     }).format(now),
@@ -67,15 +74,15 @@ export function eachDay(start: string, end: string): string[] {
   return out;
 }
 
-/** Whether an ISO day is within the editable window (today or yesterday, Dhaka). */
-export function isWithinLogWindow(iso: string, now: Date = new Date()): boolean {
-  const today = dhakaToday(now);
+/** Whether an ISO day is within the editable window (today or yesterday, in `tz`). */
+export function isWithinLogWindow(iso: string, tz: string = DEFAULT_TZ, now: Date = new Date()): boolean {
+  const today = todayIn(tz, now);
   return iso === today || iso === addDays(today, -1);
 }
 
-/** Time-of-day greeting for Dhaka. */
-export function greeting(now: Date = new Date()): { text: string; emoji: string } {
-  const h = dhakaHour(now);
+/** Time-of-day greeting for `tz`. */
+export function greeting(tz: string = DEFAULT_TZ, now: Date = new Date()): { text: string; emoji: string } {
+  const h = hourIn(tz, now);
   if (h < 5) return { text: "Good night", emoji: "🌙" };
   if (h < 12) return { text: "Good morning", emoji: "☀️" };
   if (h < 17) return { text: "Good afternoon", emoji: "🌤️" };
@@ -96,3 +103,26 @@ export function weekdayShort(iso: string): string {
 }
 
 export { MONTHS, WEEKDAYS };
+
+// ---- month / span helpers (pure ISO-day arithmetic, timezone-free) --------
+
+/** First day of the calendar month containing `iso`. */
+export function startOfMonth(iso: string): string {
+  return `${iso.slice(0, 7)}-01`;
+}
+
+/** Last day of the calendar month containing `iso`. */
+export function endOfMonth(iso: string): string {
+  const [y, m] = iso.split("-").map(Number);
+  return toDay(new Date(Date.UTC(y, m, 0, 12))); // day 0 of next month == last of this
+}
+
+/** Number of days in the calendar month containing `iso`. */
+export function daysInMonth(iso: string): number {
+  return Number(endOfMonth(iso).slice(8));
+}
+
+/** Whole days from `from` to `to` (negative when `to` is earlier). */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((parseDay(to).getTime() - parseDay(from).getTime()) / 86_400_000);
+}

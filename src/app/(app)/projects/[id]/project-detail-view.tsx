@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import type { DayActivity, Project } from "@/lib/types";
-import { parseDay, shortDate } from "@/lib/dates";
+import type { TargetStatus } from "@/lib/targets";
+import { TargetWarning } from "@/components/dashboard/target-warning";
+import { addDays, parseDay, shortDate } from "@/lib/dates";
 import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { Ring } from "@/components/ui/ring";
@@ -26,11 +28,13 @@ export function ProjectDetailView({
   project,
   activity,
   today,
+  status = null,
   canLog = false,
 }: {
   project: Project;
   activity: DayActivity[];
   today: string;
+  status?: TargetStatus | null;
   canLog?: boolean;
 }) {
   const pct = progressPct(project);
@@ -59,6 +63,8 @@ export function ProjectDetailView({
         <Icon name="ChevronLeft" size={16} />
         All projects
       </Link>
+
+      {status && status.level !== "ok" && <TargetWarning status={status} />}
 
       {/* Header */}
       <div className="glass rounded-2xl p-5 sm:p-6">
@@ -134,7 +140,7 @@ export function ProjectDetailView({
       <Panel title="Progress updates" subtitle={`${commits.length} update${commits.length === 1 ? "" : "s"} · ${daysWorked} day${daysWorked === 1 ? "" : "s"} worked`}>
         {canLog && (
           <div className="mb-4">
-            <CommitComposer projectId={project.id} />
+            <CommitComposer projectId={project.id} today={today} yesterday={addDays(today, -1)} />
           </div>
         )}
         {commits.length > 0 ? (

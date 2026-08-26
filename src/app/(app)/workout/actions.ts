@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { dhakaToday } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
+import { currentDay } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 export type LogResult = { ok: boolean; error: string | null };
@@ -19,24 +20,40 @@ function revalidateAll() {
   revalidatePath("/");
 }
 
-/** Record whether today's workout happened (upsert one row per day). */
-export async function setTodayWorkout(_prev: LogResult, formData: FormData): Promise<LogResult> {
+/**
+ * Record whether a session happened (upsert one row per day). Defaults to today
+ * — the Workout page's form posts no date — but accepts `log_date` so the AI box
+ * can log "yesterday: rest day" against the right day instead of stamping today.
+ * Same today+yesterday window the expense and journal actions enforce.
+ */
+export async function setWorkoutDay(_prev: LogResult, formData: FormData): Promise<LogResult> {
   const { supabase, user } = await requireUser();
   if (!user) return { ok: false, error: "Please sign in first." };
 
   const done = formData.get("done") === "true";
   const planLabel = ((formData.get("plan_label") as string) || "").slice(0, 40) || null;
 
+  const today = await currentDay();
+  const logDate = (formData.get("log_date") as string) || today;
+  if (logDate !== today && logDate !== addDays(today, -1)) {
+    return { ok: false, error: "You can only log today or yesterday." };
+  }
+
   const { error } = await supabase
     .from("workout_logs")
-    .upsert({ user_id: user.id, log_date: dhakaToday(), done, plan_label: planLabel }, { onConflict: "user_id,log_date" });
+    .upsert({ user_id: user.id, log_date: logDate, done, plan_label: planLabel }, { onConflict: "user_id,log_date" });
   if (error) return { ok: false, error: error.message };
 
   revalidateAll();
   return { ok: true, error: null };
 }
 
-/** Log today's body weight (and optional body-fat %) — upsert one row per day. */
+/**
+ * Log a day's body weight (and optional body-fat %) — upsert one row per day.
+ * Defaults to today — the Workout page's form posts no date — but accepts
+ * `log_date` so the AI box can file "yesterday I weighed 78.5kg" against the
+ * right day. Same today+yesterday window every other logging action enforces.
+ */
 export async function logWeight(_prev: LogResult, formData: FormData): Promise<LogResult> {
   const { supabase, user } = await requireUser();
   if (!user) return { ok: false, error: "Please sign in first." };
@@ -46,10 +63,16 @@ export async function logWeight(_prev: LogResult, formData: FormData): Promise<L
   const bfRaw = formData.get("body_fat");
   const bodyFat = bfRaw ? Number(bfRaw) : null;
 
+  const today = await currentDay();
+  const logDate = (formData.get("log_date") as string) || today;
+  if (logDate !== today && logDate !== addDays(today, -1)) {
+    return { ok: false, error: "You can only log today or yesterday." };
+  }
+
   const { error } = await supabase
     .from("body_metrics")
     .upsert(
-      { user_id: user.id, log_date: dhakaToday(), weight_kg: weight, body_fat_pct: bodyFat && bodyFat > 0 ? bodyFat : null },
+      { user_id: user.id, log_date: logDate, weight_kg: weight, body_fat_pct: bodyFat && bodyFat > 0 ? bodyFat : null },
       { onConflict: "user_id,log_date" },
     );
   if (error) return { ok: false, error: error.message };
@@ -66,7 +89,7 @@ export async function saveHeight(_prev: LogResult, formData: FormData): Promise<
   const height = Number(formData.get("height"));
   if (!height || height < 50 || height > 260) return { ok: false, error: "Enter a height in cm (50–260)." };
 
-  const { error } = await supabase.from("profiles").update({ height_cm: height }).eq("id", user.id);
+  const { error } = await supabase.from("user_profiles").update({ height_cm: height }).eq("id", user.id);
   if (error) return { ok: false, error: error.message };
 
   revalidateAll();

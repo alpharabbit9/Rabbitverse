@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { addDays, dhakaToday } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
+import { currentDay } from "@/lib/session";
 
 export type LogResult = { ok: boolean; error: string | null };
 
@@ -22,9 +23,8 @@ export async function addExpense(_prev: LogResult, formData: FormData): Promise<
 
   const category_id = (formData.get("category_id") as string) || null;
   const note = ((formData.get("note") as string) || "").trim().slice(0, 200) || null;
-  const spent_at = (formData.get("spent_at") as string) || dhakaToday();
-
-  const today = dhakaToday();
+  const today = await currentDay();
+  const spent_at = (formData.get("spent_at") as string) || today;
   if (spent_at !== today && spent_at !== addDays(today, -1)) {
     return { ok: false, error: "You can only log today or yesterday." };
   }

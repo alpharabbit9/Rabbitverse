@@ -1,24 +1,25 @@
-import { addDays, dhakaToday } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { categories as sampleCategories, projects as sampleProjects } from "@/lib/sample-data";
 import { QuickAddHub, type QuickAddActions } from "@/components/quick-add/quick-add-hub";
 import { addExpense } from "./actions";
 import { createProject, logProgress } from "../projects/actions";
-import { setTodayWorkout, logWeight } from "../workout/actions";
+import { setWorkoutDay, logWeight } from "../workout/actions";
 import { saveJournal } from "../mental-health/actions";
+import { currentDay } from "@/lib/session";
 
 const actions: QuickAddActions = {
   addExpense,
   createProject,
   logProgress,
-  setWorkout: setTodayWorkout,
+  setWorkout: setWorkoutDay,
   logWeight,
   saveJournal,
 };
 
 export default async function QuickAddPage() {
-  const today = dhakaToday();
+  const today = await currentDay();
   const yesterday = addDays(today, -1);
 
   if (!isSupabaseConfigured) {

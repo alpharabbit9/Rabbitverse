@@ -1,7 +1,12 @@
 # Connecting Rabbit Verse to Supabase
 
 Rabbit Verse runs in **demo mode** (sample data, no login) until you add Supabase keys.
-Follow these once to enable private sign-in + real data. Free tier is plenty.
+Follow these once to enable sign-in + real data. Free tier is plenty.
+
+> **Multi-user as of V3.0.** Anyone can create an account (email + password, or Google);
+> every row stays private to its owner through Row-Level Security. Demo mode is now
+> **local development only** — a production build with keys always sends a signed-out
+> visitor to `/login`.
 
 ## 1. Create the project
 1. Go to [supabase.com](https://supabase.com) → **New project** (free tier).
@@ -9,9 +14,18 @@ Follow these once to enable private sign-in + real data. Free tier is plenty.
 
 ## 2. Create the schema
 1. In the dashboard → **SQL Editor** → **New query**.
-2. Paste the contents of [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) and **Run**.
-   - This creates all tables, Row-Level-Security policies, and a trigger that seeds
-     your categories + 7-day workout plan on first sign-in.
+2. Run each migration in `supabase/migrations/` **in order**, pasting the file contents
+   and pressing **Run**:
+   - [`0001_init.sql`](supabase/migrations/0001_init.sql) — tables, RLS policies, and the
+     on-signup trigger that seeds categories + a 7-day workout plan.
+   - [`0002_project_details.sql`](supabase/migrations/0002_project_details.sql) — project
+     goals, task checklist, dated commits.
+   - [`0003_reminders.sql`](supabase/migrations/0003_reminders.sql) — the `pg_cron` job for
+     push reminders (see §6).
+   - [`0004_multi_user.sql`](supabase/migrations/0004_multi_user.sql) — **V3.0**: the
+     `public.users` roster, `profiles` renamed to `user_profiles` with per-user timezone /
+     currency / locale / mascot, and a rewritten `handle_new_user()` that writes the roster
+     row and the profile inside the signup transaction. Idempotent; safe to re-run.
 
 ## 3. Enable Google sign-in
 1. In [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services → Credentials**
@@ -29,12 +43,42 @@ Follow these once to enable private sign-in + real data. Free tier is plenty.
 2. From Supabase → **Project Settings → API**, copy:
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. Set `ALLOWED_EMAIL` to the single Google account allowed in (already defaulted to yours).
-4. Restart `npm run dev`.
+3. _(Optional)_ Set `NEXT_PUBLIC_SITE_URL` if you're not on `localhost:3000`.
+4. _(Optional, V2 AI logging)_ Set `GROQ_API_KEY` to a free key from
+   [console.groq.com/keys](https://console.groq.com/keys). This powers the
+   "type what I did" box; without it the box falls back to a simple offline
+   preview parser, and the manual Quick-Add forms work regardless. It's a
+   **server-side** secret — no `NEXT_PUBLIC_` prefix, never exposed to the browser.
+   The model lives in `src/lib/ai/groq.ts` (currently `openai/gpt-oss-120b`).
+   Groq retires models periodically — if parsing starts failing with
+   `model_not_found`, list what your key can reach and swap that one constant:
+
+   ```bash
+   curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
+   ```
+5. Restart `npm run dev`.
 
 ## 5. Sign in
-Visit `http://localhost:3000` → you'll be redirected to `/login` → **Continue with Google**.
-Only the `ALLOWED_EMAIL` account is let through; anyone else is bounced with a message.
+Visit `http://localhost:3000` → you'll be redirected to `/login`. Either **Continue with
+Google**, or use the email + password form; **Create an account** is on `/signup` and
+**Forgot?** leads to `/forgot-password`.
+
+Email + password signup needs confirmation mail to work: Supabase →
+**Authentication → Providers → Email** → keep *Confirm email* on and make sure
+`http://localhost:3000/**` (plus your production URL) is in **URL Configuration →
+Redirect URLs**, or the confirmation and reset links will bounce. On the free tier
+Supabase's built-in mailer is rate-limited — wire up an SMTP provider before real users.
+
+**Suspending an account.** There is no admin UI. In the SQL editor:
+
+```sql
+update public.users set status = 'suspended' where email = 'someone@example.com';
+```
+
+They are then turned away at sign-in, at the OAuth callback, and on their next page
+load if they were already signed in. Only the service role can change `status` — the
+roster's RLS gives users read-only access to their own row, so nobody can un-suspend
+themselves.
 
 > Deploying to Vercel later: add the same env vars in the Vercel project, set
 > `NEXT_PUBLIC_SITE_URL` to your Vercel URL, and add that URL to the Supabase redirect list

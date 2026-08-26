@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { useCurrencySymbol } from "@/components/locale-provider";
 
 type LogResult = { ok: boolean; error: string | null };
 type Cat = { id: string; name: string; color: string; icon: string };
@@ -21,6 +22,7 @@ export function ExpenseForm({
   action: (prev: LogResult, fd: FormData) => Promise<LogResult>;
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL);
+  const symbol = useCurrencySymbol();
   const ref = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -35,9 +37,9 @@ export function ExpenseForm({
   return (
     <form ref={ref} action={formAction} className="space-y-4">
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Amount (৳)</label>
+        <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Amount ({symbol})</label>
         <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted">৳</span>
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted">{symbol}</span>
           <input
             name="amount"
             type="number"

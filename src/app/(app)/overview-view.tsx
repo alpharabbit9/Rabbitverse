@@ -1,9 +1,9 @@
 "use client";
 
-import { addDays, eachDay, weekdayShort } from "@/lib/dates";
+import { addDays, eachDay, startOfMonth, startOfWeek, weekdayShort } from "@/lib/dates";
 import type { LifeSignals } from "@/lib/life-score";
 import type { scoreLabel } from "@/lib/life-score";
-import type { Insight, rabbitStateFor } from "@/lib/motivation";
+import type { Insight, mascotStateFor } from "@/lib/motivation";
 import type {
   BodyMetric,
   DayActivity,
@@ -16,11 +16,13 @@ import type {
   WorkoutLog,
 } from "@/lib/types";
 import { SECTION_META } from "@/lib/nav";
-import { taka } from "@/lib/utils";
+import { attentionStatuses, sectionStatuses, type TargetStatus } from "@/lib/targets";
+import { TargetBadge, TargetWarnings } from "@/components/dashboard/target-warning";
+import { useMoney } from "@/components/locale-provider";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { AIInsight } from "@/components/dashboard/ai-insight";
-import { RabbitSays } from "@/components/dashboard/rabbit-says";
+import { MascotSays } from "@/components/dashboard/mascot-says";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { RadarBalance } from "@/components/charts/radar-balance";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
@@ -50,13 +52,22 @@ export interface OverviewViewProps {
   todayTimeline: TimelineEvent[];
   headline: string;
   insights: Insight[];
-  rabbitState: ReturnType<typeof rabbitStateFor>;
+  mascotState: ReturnType<typeof mascotStateFor>;
+  /** every target checked against reality; the strip below shows the non-ok ones */
+  statuses?: TargetStatus[];
 }
 
 export function OverviewView(p: OverviewViewProps) {
+  const money = useMoney();
   const { today } = p;
-  const last7 = eachDay(addDays(today, -6), today);
-  const last30 = eachDay(addDays(today, -29), today);
+  const statuses = p.statuses ?? [];
+  const attention = attentionStatuses(statuses);
+  /** worst level for one section, so a section card can wear a pill. */
+  const badgeFor = (section: SectionKey) => {
+    const worst = sectionStatuses(statuses, section).find((s) => s.level !== "ok");
+    return worst ? <TargetBadge level={worst.level} label={worst.level === "over" ? "Off track" : "Heads up"} /> : null;
+  };
+  const last7 = eachDay(addDays(today, -6), today); // trailing shape, for sparklines only
 
   const ongoing = p.projects.filter((x) => x.status === "ongoing");
   const completed = p.projects.filter((x) => x.status === "completed");
@@ -64,12 +75,22 @@ export function OverviewView(p: OverviewViewProps) {
     ongoing.reduce((a, x) => a + Math.min(100, (x.current / Math.max(1, x.targetValue)) * 100), 0) / Math.max(1, ongoing.length),
   );
 
-  const weekWorkouts = p.workoutLogs.filter((w) => last7.includes(w.date) && w.done).length;
+  const weekWorkouts = p.workoutLogs.filter((w) => w.done && w.date >= startOfWeek(today) && w.date <= today).length;
   const latestWeight = p.bodyMetrics[p.bodyMetrics.length - 1]?.weightKg ?? 0;
 
-  const spendToday = p.expenses.filter((e) => e.date === today).reduce((a, e) => a + e.amount, 0);
-  const spendWeek = p.expenses.filter((e) => last7.includes(e.date)).reduce((a, e) => a + e.amount, 0);
-  const spendMonth = p.expenses.filter((e) => last30.includes(e.date)).reduce((a, e) => a + e.amount, 0);
+  // Weekly/monthly spend use the real Dhaka week and calendar month, matching
+  // the target warnings above — a rolling window here would contradict them.
+  const spendBetween = (from: string, to: string) =>
+    p.expenses.filter((e) => e.date >= from && e.date <= to).reduce((a, e) => a + e.amount, 0);
+  const spendToday = spendBetween(today, today);
+  const spendWeek = spendBetween(startOfWeek(today), today);
+  const spendMonth = spendBetween(startOfMonth(today), today);
+  // The Expenses card's tone comes from the user's own weekly cap when they set
+  // one, so the card and the "needs attention" strip always tell one story.
+  const weekStatus = statuses.find((s) => s.id === "expenses-week");
+  const expenseTone = weekStatus
+    ? { label: { ok: "Under your cap", warn: "Close to your cap", over: "Over your cap" }[weekStatus.level], color: { ok: "var(--accent-mint)", warn: "var(--accent-orange)", over: "var(--accent-rose)" }[weekStatus.level] }
+    : { label: spendWeek <= p.budget ? "Under budget" : "Over budget", color: spendWeek <= p.budget ? "var(--accent-mint)" : "var(--accent-orange)" };
 
   const latestMood = p.journal.find((j) => j.date === today)?.mood ?? p.journal[p.journal.length - 1]?.mood ?? 4;
 
@@ -87,8 +108,17 @@ export function OverviewView(p: OverviewViewProps) {
         streakDays={p.profile.streakDays}
         level={p.profile.level}
         mood={p.mood}
-        rabbitState={p.rabbitState}
+        mascotState={p.mascotState}
       />
+
+      {attention.length > 0 && (
+        <section aria-label="Targets needing attention" className="space-y-2">
+          <h2 className="text-sm font-semibold text-fg-secondary">
+            Needs attention · {attention.length}
+          </h2>
+          <TargetWarnings statuses={statuses} limit={3} />
+        </section>
+      )}
 
       {/* headline stats */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -128,9 +158,9 @@ export function OverviewView(p: OverviewViewProps) {
           icon="Wallet"
           label="Expenses"
           accent="var(--accent-mint)"
-          value={taka(spendWeek)}
-          toneLabel={spendWeek <= p.budget ? "Under budget" : "Over budget"}
-          toneColor={spendWeek <= p.budget ? "var(--accent-mint)" : "var(--accent-orange)"}
+          value={money(spendWeek)}
+          toneLabel={expenseTone.label}
+          toneColor={expenseTone.color}
           spark={{ data: expenseSpark, color: "var(--accent-mint)" }}
         />
       </div>
@@ -138,7 +168,7 @@ export function OverviewView(p: OverviewViewProps) {
       {/* AI insight + rabbit says */}
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
         <AIInsight />
-        <RabbitSays insights={p.insights} />
+        <MascotSays insights={p.insights} />
       </div>
 
       {/* trend + balance */}
@@ -178,15 +208,15 @@ export function OverviewView(p: OverviewViewProps) {
           </div>
         </div>
 
-        <SectionCard href="/projects" icon={SECTION_META.projects.icon} label="Projects" accent={SECTION_META.projects.accent} primary={`${ongoing.length} active`} sub={`${completed.length} completed · ${overallProgress}% overall`} spark={spark("projects")} />
-        <SectionCard href="/workout" icon={SECTION_META.workout.icon} label="Workout" accent={SECTION_META.workout.accent} primary={`${weekWorkouts} workouts`} sub={latestWeight ? `${latestWeight}kg · keep going` : "log your first"} spark={spark("workout")} />
-        <SectionCard href="/mental-health" icon={SECTION_META.mental.icon} label="Mental Health" accent={SECTION_META.mental.accent} primary={`Mood ${latestMood}/5`} sub={`${p.journal.length} journal entries`} spark={spark("mental")} />
+        <SectionCard href="/projects" icon={SECTION_META.projects.icon} label="Projects" accent={SECTION_META.projects.accent} primary={`${ongoing.length} active`} sub={`${completed.length} completed · ${overallProgress}% overall`} spark={spark("projects")} badge={badgeFor("projects")} />
+        <SectionCard href="/workout" icon={SECTION_META.workout.icon} label="Workout" accent={SECTION_META.workout.accent} primary={`${weekWorkouts} workout${weekWorkouts === 1 ? "" : "s"}`} sub={latestWeight ? `${latestWeight}kg · keep going` : "log your first"} spark={spark("workout")} badge={badgeFor("workout")} />
+        <SectionCard href="/mental-health" icon={SECTION_META.mental.icon} label="Mental Health" accent={SECTION_META.mental.accent} primary={`Mood ${latestMood}/5`} sub={`${p.journal.length} journal entr${p.journal.length === 1 ? "y" : "ies"}`} spark={spark("mental")} badge={badgeFor("mental")} />
       </div>
 
       <p className="pt-2 text-center text-xs text-fg-muted">
         {p.isDemo
-          ? `Showing sample data · connect Supabase to track your real life · today spent ${taka(spendToday)} · month ${taka(spendMonth)}`
-          : `Your real data · today spent ${taka(spendToday)} · month ${taka(spendMonth)}`}
+          ? `Showing sample data · connect Supabase to track your real life · today spent ${money(spendToday)} · month ${money(spendMonth)}`
+          : `Your real data · today spent ${money(spendToday)} · month ${money(spendMonth)}`}
       </p>
     </div>
   );

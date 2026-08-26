@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import type { DayActivity, Project } from "@/lib/types";
+import type { TargetStatus } from "@/lib/targets";
+import { TargetBadge, TargetWarnings } from "@/components/dashboard/target-warning";
 import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { Ring } from "@/components/ui/ring";
@@ -27,15 +29,19 @@ export function ProjectsView({
   projects,
   activity,
   today,
+  statuses = [],
   canLog = false,
 }: {
   projects: Project[];
   activity: DayActivity[];
   today: string;
+  statuses?: TargetStatus[];
   canLog?: boolean;
 }) {
   const ongoing = projects.filter((p) => p.status === "ongoing");
   const completed = projects.filter((p) => p.status === "completed");
+  // One status per project, keyed for the per-card badge below.
+  const statusFor = new Map(statuses.map((s) => [s.id, s]));
 
   return (
     <div className="space-y-6 sm:space-y-7">
@@ -46,15 +52,25 @@ export function ProjectsView({
         </p>
       </header>
 
+      <TargetWarnings statuses={statuses} />
+
       <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         {ongoing.map((p) => {
           const pct = progressPct(p);
+          const status = statusFor.get(`project-${p.id}`);
           return (
             <Link
               key={p.id}
               href={`/projects/${p.id}`}
               className="glass group flex flex-col gap-3 rounded-2xl p-5 transition-colors hover:border-border-strong"
             >
+              {status && status.level !== "ok" && (
+                <TargetBadge
+                  level={status.level}
+                  label={status.level === "over" ? "Overdue" : "Behind pace"}
+                  className="self-start"
+                />
+              )}
               <div className="flex items-center gap-4">
                 <Ring value={pct} size={84} stroke={8} from="var(--accent-blue)" to="var(--accent-cyan)" id={p.id}>
                   <span className="text-sm font-bold">{pct}%</span>

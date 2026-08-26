@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
-import { logWeight, saveHeight, setTodayWorkout, type LogResult } from "./actions";
+import { logWeight, saveHeight, setWorkoutDay, type LogResult } from "./actions";
 
 const INITIAL: LogResult = { ok: false, error: null };
 
@@ -15,7 +15,7 @@ export function TodayWorkoutForm({
   planLabel: string;
   status: "done" | "rest" | null;
 }) {
-  const [state, action, pending] = useActionState(setTodayWorkout, INITIAL);
+  const [state, action, pending] = useActionState(setWorkoutDay, INITIAL);
   const formRef = useRef<HTMLFormElement>(null);
   const doneRef = useRef<HTMLInputElement>(null);
 

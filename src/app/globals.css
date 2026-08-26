@@ -29,6 +29,8 @@
   --accent-cyan: #61d7ff;
   --accent-gold: #f5c35c;
   --accent-orange: #ffb15e;
+  /* the only "something is wrong" hue — target warnings, over-cap states */
+  --accent-rose: #ff7a8a;
 
   --primary: #8b5cf6;
   --primary-2: #5b7cfa;
@@ -76,6 +78,7 @@
   --accent-cyan: #2bb6e6;
   --accent-gold: #e0a63c;
   --accent-orange: #f0913f;
+  --accent-rose: #e0455c;
 
   --primary: #6366f1;
   --primary-2: #5b7cfa;
@@ -121,6 +124,7 @@
   --color-accent-cyan: var(--accent-cyan);
   --color-accent-gold: var(--accent-gold);
   --color-accent-orange: var(--accent-orange);
+  --color-accent-rose: var(--accent-rose);
 
   --color-primary: var(--primary);
   --color-primary-2: var(--primary-2);

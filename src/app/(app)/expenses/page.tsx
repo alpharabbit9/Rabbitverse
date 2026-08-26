@@ -1,22 +1,32 @@
-import { addDays, dhakaToday, shortDate } from "@/lib/dates";
-import { taka } from "@/lib/utils";
+import { addDays, shortDate } from "@/lib/dates";
+import { money } from "@/lib/money";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getExpensesData } from "@/lib/data/expenses";
+import { getTargets } from "@/lib/data/targets";
+import { DEFAULT_TARGETS, sectionTargetStatuses } from "@/lib/targets";
 import { activity as sampleActivity, categories as sampleCategories, expenses as sampleExpenses } from "@/lib/sample-data";
 import { Panel } from "@/components/dashboard/panel";
 import { Icon } from "@/components/icon";
 import { ExpensesView } from "./expenses-view";
 import { ExpenseForm } from "@/components/quick-add/expense-form";
 import { addExpense } from "../quick-add/actions";
+import { currentDay, getLocaleContext } from "@/lib/session";
 
 export default async function ExpensesPage() {
-  const today = dhakaToday();
+  const today = await currentDay();
 
   if (!isSupabaseConfigured) {
-    return <ExpensesView categories={sampleCategories} expenses={sampleExpenses} activity={sampleActivity} today={today} />;
+    // Demo uses the default targets so the warnings are visible without keys.
+    const statuses = sectionTargetStatuses("expenses", { today, targets: DEFAULT_TARGETS, expenses: sampleExpenses });
+    return <ExpensesView categories={sampleCategories} expenses={sampleExpenses} activity={sampleActivity} today={today} statuses={statuses} />;
   }
 
-  const { categories, expenses, activity } = await getExpensesData(today);
+  const [{ categories, expenses, activity }, targets, { currency, locale }] = await Promise.all([
+    getExpensesData(today),
+    getTargets(),
+    getLocaleContext(),
+  ]);
+  const statuses = sectionTargetStatuses("expenses", { today, targets, expenses, currency, locale });
   const recent = [...expenses].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6);
   const catMap = new Map(categories.map((c) => [c.id, c]));
 
@@ -44,7 +54,7 @@ export default async function ExpensesPage() {
                       <span className="block text-xs text-fg-muted">{shortDate(e.date)}</span>
                     </span>
                   </span>
-                  <span className="font-semibold tabular-nums">{taka(e.amount)}</span>
+                  <span className="font-semibold tabular-nums">{money(e.amount, { currency, locale })}</span>
                 </li>
               );
             })}
@@ -58,5 +68,5 @@ export default async function ExpensesPage() {
     </div>
   );
 
-  return <ExpensesView categories={categories} expenses={expenses} activity={activity} today={today} logSlot={logSlot} />;
+  return <ExpensesView categories={categories} expenses={expenses} activity={activity} today={today} statuses={statuses} logSlot={logSlot} />;
 }

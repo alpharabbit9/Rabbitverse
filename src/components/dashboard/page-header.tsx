@@ -2,8 +2,10 @@
 
 import { motion } from "motion/react";
 import { greeting } from "@/lib/dates";
+import { useLocale } from "@/components/locale-provider";
 import { Icon } from "@/components/icon";
-import { Rabbit, type RabbitState } from "@/components/mascot/rabbit";
+import { useMascot } from "@/components/mascot/provider";
+import type { MascotState } from "@/components/mascot/types";
 import { MOOD_EMOJI, MOOD_LABEL } from "@/lib/motivation";
 import type { MoodState } from "@/lib/types";
 
@@ -13,16 +15,18 @@ export function PageHeader({
   streakDays,
   level,
   mood,
-  rabbitState,
+  mascotState,
 }: {
   name: string;
   subtitle: string;
   streakDays: number;
   level: number;
   mood: MoodState;
-  rabbitState: RabbitState;
+  mascotState: MascotState;
 }) {
-  const g = greeting();
+  const { tz } = useLocale();
+  const { Component: Mascot } = useMascot();
+  const g = greeting(tz);
 
   return (
     <div className="relative flex items-start justify-between gap-4">
@@ -65,7 +69,7 @@ export function PageHeader({
       </div>
 
       <div className="relative hidden shrink-0 sm:block">
-        <Rabbit state={rabbitState} size={132} />
+        <Mascot state={mascotState} size={132} />
       </div>
     </div>
   );

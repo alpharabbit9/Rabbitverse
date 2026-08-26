@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { dhakaToday } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
+import { currentDay } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 export type LogResult = { ok: boolean; error: string | null };
@@ -12,6 +13,20 @@ async function requireUser() {
     data: { user },
   } = await supabase.auth.getUser();
   return { supabase, user };
+}
+
+/**
+ * Resolve an optional `log_date` against the today+yesterday window every other
+ * logging action enforces. Returns the error string when it's out of range, so
+ * callers can bail with the same message the expense and journal actions use.
+ */
+async function resolveLogDate(formData: FormData): Promise<{ date: string } | { error: string }> {
+  const today = await currentDay();
+  const date = (formData.get("log_date") as string) || today;
+  if (date !== today && date !== addDays(today, -1)) {
+    return { error: "You can only log today or yesterday." };
+  }
+  return { date };
 }
 
 function revalidateAll() {
@@ -75,7 +90,7 @@ export async function createProject(_prev: LogResult, formData: FormData): Promi
     target_unit: targetUnit,
     current_value: 0,
     status: "ongoing",
-    start_date: dhakaToday(),
+    start_date: await currentDay(),
     target_date: targetDate,
   });
   if (error) return { ok: false, error: error.message };
@@ -123,7 +138,7 @@ export async function toggleTask(_prev: LogResult, formData: FormData): Promise<
 
   const { error } = await supabase
     .from("project_tasks")
-    .update({ done, done_at: done ? dhakaToday() : null })
+    .update({ done, done_at: done ? await currentDay() : null })
     .eq("id", taskId);
   if (error) return { ok: false, error: error.message };
 
@@ -154,7 +169,8 @@ export async function deleteTask(_prev: LogResult, formData: FormData): Promise<
 /**
  * Log a written progress update ("commit"). One row per project per day — a
  * second update the same day appends to that day's note, so the number of rows
- * equals the number of distinct days worked on the project.
+ * equals the number of distinct days worked on the project. Defaults to today,
+ * but accepts `log_date` so yesterday's work can be written up this morning.
  */
 export async function addCommit(_prev: LogResult, formData: FormData): Promise<LogResult> {
   const { supabase, user } = await requireUser();
@@ -165,12 +181,14 @@ export async function addCommit(_prev: LogResult, formData: FormData): Promise<L
   if (!projectId) return { ok: false, error: "Missing project." };
   if (!note) return { ok: false, error: "Write what you got done." };
 
-  const today = dhakaToday();
+  const when = await resolveLogDate(formData);
+  if ("error" in when) return { ok: false, error: when.error };
+
   const { data: existing } = await supabase
     .from("project_logs")
     .select("id,note")
     .eq("project_id", projectId)
-    .eq("log_date", today)
+    .eq("log_date", when.date)
     .maybeSingle();
 
   if (existing) {
@@ -180,7 +198,7 @@ export async function addCommit(_prev: LogResult, formData: FormData): Promise<L
   } else {
     const { error } = await supabase
       .from("project_logs")
-      .insert({ user_id: user.id, project_id: projectId, log_date: today, progress_amount: 0, note });
+      .insert({ user_id: user.id, project_id: projectId, log_date: when.date, progress_amount: 0, note });
     if (error) return { ok: false, error: error.message };
   }
 
@@ -188,7 +206,11 @@ export async function addCommit(_prev: LogResult, formData: FormData): Promise<L
   return { ok: true, error: null };
 }
 
-/** Add progress to a project today: bump current_value + record today's log for the heatmap. */
+/**
+ * Add progress to a project: bump current_value + record that day's log for the
+ * heatmap. Defaults to today, but honours `log_date` within the today+yesterday
+ * window like every other logging action.
+ */
 export async function logProgress(_prev: LogResult, formData: FormData): Promise<LogResult> {
   const { supabase, user } = await requireUser();
   if (!user) return { ok: false, error: "Please sign in first." };
@@ -198,6 +220,9 @@ export async function logProgress(_prev: LogResult, formData: FormData): Promise
   if (!projectId) return { ok: false, error: "Missing project." };
   if (!amount || amount === 0) return { ok: false, error: "Enter a progress amount." };
 
+  const when = await resolveLogDate(formData);
+  if ("error" in when) return { ok: false, error: when.error };
+
   const { data: proj, error: readErr } = await supabase
     .from("projects")
     .select("current_value,target_value")
@@ -205,6 +230,18 @@ export async function logProgress(_prev: LogResult, formData: FormData): Promise
     .maybeSingle();
   if (readErr) return { ok: false, error: readErr.message };
   if (!proj) return { ok: false, error: "Project not found." };
+
+  // A project with a checklist gets its percentage from `recomputeProgress`, so
+  // bumping current_value here would move the ring only until the next task is
+  // ticked — and every warning quoting that percentage with it. Numeric
+  // progress belongs to projects that have no checklist.
+  const { count: taskCount } = await supabase
+    .from("project_tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", projectId);
+  if (taskCount) {
+    return { ok: false, error: "This project's progress comes from its checklist — tick a task instead." };
+  }
 
   const newCurrent = Math.max(0, Number(proj.current_value) + amount);
   const completed = newCurrent >= Number(proj.target_value);
@@ -215,13 +252,12 @@ export async function logProgress(_prev: LogResult, formData: FormData): Promise
     .eq("id", projectId);
   if (updErr) return { ok: false, error: updErr.message };
 
-  // One log row per project per day — accumulate if we already logged today.
-  const today = dhakaToday();
+  // One log row per project per day — accumulate if that day already has one.
   const { data: existing } = await supabase
     .from("project_logs")
     .select("id,progress_amount")
     .eq("project_id", projectId)
-    .eq("log_date", today)
+    .eq("log_date", when.date)
     .maybeSingle();
 
   if (existing) {
@@ -230,7 +266,7 @@ export async function logProgress(_prev: LogResult, formData: FormData): Promise
       .update({ progress_amount: Number(existing.progress_amount) + amount })
       .eq("id", existing.id);
   } else {
-    await supabase.from("project_logs").insert({ user_id: user.id, project_id: projectId, log_date: today, progress_amount: amount });
+    await supabase.from("project_logs").insert({ user_id: user.id, project_id: projectId, log_date: when.date, progress_amount: amount });
   }
 
   revalidateAll();

@@ -26,7 +26,7 @@ export async function getProfileSummary(today: string): Promise<ProfileSummary> 
   const [{ data: userRes }, { data: prof }, { data: exp }, { data: wo }, { data: jr }, { data: pl }] =
     await Promise.all([
       supabase.auth.getUser(),
-      supabase.from("profiles").select("display_name").maybeSingle(),
+      supabase.from("user_profiles").select("display_name").maybeSingle(),
       supabase.from("expenses").select("spent_at").gte("spent_at", start),
       supabase.from("workout_logs").select("log_date,done").gte("log_date", start),
       supabase.from("journal_entries").select("entry_date").gte("entry_date", start),
@@ -39,8 +39,9 @@ export async function getProfileSummary(today: string): Promise<ProfileSummary> 
     (prof?.display_name as string | undefined) ||
     (typeof meta.full_name === "string" ? meta.full_name : "") ||
     (typeof meta.name === "string" ? meta.name : "") ||
-    "Rifat";
-  const name = fullName.split(" ")[0] || "Rifat";
+    user?.email?.split("@")[0] ||
+    "Friend";
+  const name = fullName.split(" ")[0] || fullName;
   const avatarUrl =
     (typeof meta.avatar_url === "string" && meta.avatar_url) ||
     (typeof meta.picture === "string" && meta.picture) ||

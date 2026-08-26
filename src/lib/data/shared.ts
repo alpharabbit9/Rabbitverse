@@ -5,6 +5,7 @@
   server client and must only be imported from Server Components / Server Actions
   (never a "use client" module).
 */
+import { DEFAULT_TARGETS } from "@/lib/targets";
 import type {
   BodyMetric,
   Expense,
@@ -16,8 +17,12 @@ import type {
   WorkoutPlanDay,
 } from "@/lib/types";
 
-/** Weekly spending budget (৳). Static for v1; can move to profile settings later. */
-export const WEEKLY_BUDGET = 6000;
+/**
+ * Fallback weekly spending budget, used when the user has no weekly cap of
+ * their own. The real value comes from `user_profiles.settings.targets` via
+ * `lib/data/targets.ts` — this is only the floor under it.
+ */
+export const WEEKLY_BUDGET = DEFAULT_TARGETS.weeklyExpenseCap ?? 6000;
 export const HEATMAP_DAYS = 364;
 
 // ---- row → domain shapers -------------------------------------------------

@@ -117,7 +117,8 @@ export function RemindersCard({ initialTime }: { initialTime: string }) {
         />
       </label>
       <p className="text-xs text-fg-muted">
-        Sent at {time} Asia/Dhaka. Enable it once per device you want reminders on.
+        Sent at {time} in your timezone (Settings → Preferences). Enable it once per device you want
+        reminders on.
       </p>
     </div>
   );

@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
-import { ALLOWED_EMAIL } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
-/** OAuth callback: exchange the code for a session, then enforce the allowlist. */
+/**
+ * OAuth / email-link callback: exchange the code for a session, then check the
+ * account is allowed in.
+ *
+ * The single-email allowlist is gone — Rabbit Verse is self-serve now. What
+ * replaces it is the roster: `public.users.status = 'suspended'` is the only
+ * thing that turns a valid session away.
+ *
+ * `next` lets one callback serve several flows (the password-reset link sends
+ * `next=/auth/reset`). It is validated as a same-origin path so the link can't
+ * be turned into an open redirect.
+ */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -16,17 +26,24 @@ export async function GET(request: Request) {
     process.env.NEXT_PUBLIC_SITE_URL ??
     (forwardedHost ? `${forwardedProto}://${forwardedHost}` : origin);
 
+  // Only a relative, single-slash path — never "//evil.com" or an absolute URL.
+  const requested = searchParams.get("next") ?? "/";
+  const next = /^\/(?!\/)[A-Za-z0-9\-._~/?#[\]@!$&'()*+,;=%]*$/.test(requested) ? requested : "/";
+
   if (code) {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const email = data.user?.email?.toLowerCase();
-      if (ALLOWED_EMAIL && email !== ALLOWED_EMAIL) {
-        await supabase.auth.signOut();
-        return NextResponse.redirect(`${base}/login?error=not-allowed`);
+      const userId = data.user?.id;
+      if (userId) {
+        const { data: roster } = await supabase.from("users").select("status").eq("id", userId).maybeSingle();
+        if (roster?.status === "suspended") {
+          await supabase.auth.signOut();
+          return NextResponse.redirect(`${base}/suspended`);
+        }
       }
-      return NextResponse.redirect(`${base}/`);
+      return NextResponse.redirect(`${base}${next}`);
     }
   }
 

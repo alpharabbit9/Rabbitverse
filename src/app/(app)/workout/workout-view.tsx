@@ -1,7 +1,10 @@
 "use client";
 
-import { addDays, eachDay, shortDate, weekdayMon0 } from "@/lib/dates";
+import { shortDate, startOfWeek, weekdayMon0 } from "@/lib/dates";
 import type { BodyMetric, DayActivity, WorkoutLog, WorkoutPlanDay } from "@/lib/types";
+import type { TargetStatus } from "@/lib/targets";
+import { bmiFrom } from "@/lib/health";
+import { LOOK, TargetWarnings } from "@/components/dashboard/target-warning";
 import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { TrendChart } from "@/components/charts/trend-chart";
@@ -16,6 +19,7 @@ export function WorkoutView({
   heightCm,
   activity,
   today,
+  statuses = [],
   canLog = false,
 }: {
   workoutLogs: WorkoutLog[];
@@ -24,13 +28,21 @@ export function WorkoutView({
   heightCm: number | null;
   activity: DayActivity[];
   today: string;
+  statuses?: TargetStatus[];
   canLog?: boolean;
 }) {
-  const last7 = eachDay(addDays(today, -6), today);
-  const weekWorkouts = workoutLogs.filter((w) => last7.includes(w.date) && w.done).length;
+  // "This week" is the Dhaka Mon-start week — the same window the weekly
+  // workout target is judged on, so the header can't disagree with the banner.
+  const weekStart = startOfWeek(today);
+  const weekWorkouts = workoutLogs.filter((w) => w.done && w.date >= weekStart && w.date <= today).length;
   const latest = bodyMetrics[bodyMetrics.length - 1];
-  const bmi = latest && heightCm ? +(latest.weightKg / (heightCm / 100) ** 2).toFixed(1) : null;
+  const bmi = bmiFrom(latest?.weightKg, heightCm);
   const weightTrend = bodyMetrics.map((m) => ({ label: shortDate(m.date), value: m.weightKg }));
+
+  // The week's verdict comes from the target engine itself rather than a second
+  // hardcoded threshold — a local `>= 3` rule used to print "Consistency strong"
+  // directly under a banner saying you were behind pace on a target of 5.
+  const paceStatus = statuses.find((s) => s.id === "workout-week");
 
   const todayLog = workoutLogs.find((w) => w.date === today);
   const todayStatus: "done" | "rest" | null = todayLog ? (todayLog.done ? "done" : "rest") : null;
@@ -41,9 +53,11 @@ export function WorkoutView({
       <header>
         <h1 className="text-2xl font-bold tracking-tight">Workout</h1>
         <p className="mt-1 text-sm text-fg-secondary">
-          {weekWorkouts} workouts this week{bmi ? ` · BMI ${bmi}` : ""}
+          {weekWorkouts} workout{weekWorkouts === 1 ? "" : "s"} this week{bmi ? ` · BMI ${bmi.value}` : ""}
         </p>
       </header>
+
+      <TargetWarnings statuses={statuses} />
 
       {canLog && (
         <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
@@ -65,7 +79,13 @@ export function WorkoutView({
         <div className="glass rounded-2xl p-5">
           <div className="text-sm text-fg-secondary">This week</div>
           <div className="mt-1 text-3xl font-bold">{weekWorkouts}×</div>
-          <div className="text-xs text-accent-purple">{weekWorkouts >= 3 ? "Consistency strong" : "Keep it going"}</div>
+          {paceStatus ? (
+            <div className="text-xs" style={{ color: LOOK[paceStatus.level].accent }}>
+              {paceStatus.label}
+            </div>
+          ) : (
+            <div className="text-xs text-fg-muted">{weekWorkouts ? "Logged and moving" : "No target set"}</div>
+          )}
         </div>
         <div className="glass rounded-2xl p-5">
           <div className="text-sm text-fg-secondary">Weight</div>
@@ -74,8 +94,14 @@ export function WorkoutView({
         </div>
         <div className="glass rounded-2xl p-5">
           <div className="text-sm text-fg-secondary">BMI</div>
-          <div className="mt-1 text-3xl font-bold">{bmi ?? "—"}</div>
-          <div className="text-xs text-accent-mint">{bmi ? "Healthy range" : "Add weight & height"}</div>
+          <div className="mt-1 text-3xl font-bold">{bmi?.value ?? "—"}</div>
+          {bmi ? (
+            <div className="text-xs" style={{ color: bmi.accent }}>
+              {bmi.label}
+            </div>
+          ) : (
+            <div className="text-xs text-fg-muted">Add weight & height</div>
+          )}
         </div>
       </div>
 

@@ -4,17 +4,37 @@
     {
       "name": "rabbit-verse-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
     },
     {
       "name": "rabbit-verse-demo",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3100,
       "autoPort": true,
-      "env": { "NEXT_PUBLIC_DEMO_MODE": "true" }
+      "env": {
+        "NEXT_PUBLIC_DEMO_MODE": "true"
+      }
+    },
+    {
+      "name": "rabbit-verse-prod",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "next",
+        "start",
+        "-p",
+        "3200"
+      ],
+      "port": 3200,
+      "autoPort": true
     }
   ]
 }

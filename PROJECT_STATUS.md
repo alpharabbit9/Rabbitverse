@@ -11,13 +11,26 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-08-02_
+_Last updated: 2026-08-26_
+
+> **V2 has begun.** V1 is finished; V2.0 ("Tell Rabbit what you did; Rabbit tells you when
+> you're off-track") is a two-pillar build in **7 phases** — full spec in the plan file
+> `C:\Users\User\.claude\plans\if-v1-is-finished-whimsical-quail.md`. See the **V2.0 roadmap**
+> section below for phase-by-phase progress.
 
 ---
 
 ## 1. Status at a glance
 
-**Phase: Real data wired end-to-end.** Every section now **reads from Supabase and writes back** for the
+**Phase: V2.0 shipped — both pillars live.** You can now **type one sentence** into the AI box on Quick-Add
+("spent ৳450 on lunch, did legs, feeling good 4/5") and Rabbit parses it into reviewable chips that save
+through the existing section actions; and you can **set targets** in Settings (monthly/weekly ৳ caps, workouts
+and check-ins per week) that Rabbit checks continuously — warnings surface on each section, on the project
+that is overdue or behind pace, and in a "Needs attention" strip on the Overview, with being off-track gently
+holding back the Mood Mode tone and the mascot. The one thing still unexercised is a **signed-in live pass**
+(see the two session-log entries below).
+
+**Previously (V1): Real data wired end-to-end.** Every section now **reads from Supabase and writes back** for the
 signed-in user (RLS-scoped): Expenses (log form), Projects (create + log progress), Workout (mark
 done/rest + weight), Mental Health (mood + journal), and the Overview aggregates all of it into real
 Life-Score / trend / streak / heatmap. The profile now shows the **Google account picture**. The app
@@ -25,8 +38,18 @@ still **defaults to demo mode** (sample data) until `NEXT_PUBLIC_DEMO_MODE=false
 share the same components via a server-page → client-view split (`*-view.tsx`), so demo and real render
 identically. `tsc` + `eslint` clean; demo mode verified in-browser.
 
-**Next milestone:** use it for a real week, then tackle remaining polish — a height input for BMI,
-Mood Mode driven by real signals, then reminders (Web Push + cron) and Higgsfield mascot art.
+**Post-V2 audit (2026-08-26, later):** every roadmap phase is complete as claimed; what's left is
+infrastructure, not code (reminders deploy + the signed-in pass). Four bugs found and fixed on the way —
+a workout logged "yesterday" was written to today, a review chip's headline went stale when edited,
+numeric progress on a checklist project moved the ring and then snapped back, and the Settings target
+toggle restored the minimum instead of the default. eslint is now clean too. See the top session-log entry.
+
+**Next milestone: V3.0** — multi-user, a user-chosen mascot, and voice input. Planned in full in
+**`updatePlan.md`** (repo root); **Phases A (correctness) and B (multi-user foundation) are
+shipped** — the app now takes self-serve signups and gives every user their own timezone and
+currency. **Phase C (mascot system) is next.** Still outstanding: the **signed-in live pass** (now
+including two-account RLS isolation and signup atomicity), the reminders Edge Function + cron
+deploy, and Higgsfield mascot art.
 
 Legend: ✅ done · 🟡 partial / UI-only (no real data) · ⬜ not started
 
@@ -34,16 +57,18 @@ Legend: ✅ done · 🟡 partial / UI-only (no real data) · ⬜ not started
 
 ## 2. The plan (one-screen summary)
 
-**Rabbit Verse** is a **private, single-user life-tracking PWA** for Rifat. It turns four life areas —
+**Rabbit Verse** is a **multi-user life-tracking PWA** (single-user until V3.0 Phase B). It turns four life areas —
 **Projects, Workout, Expenses, Mental Health** — into visible weekly/monthly/yearly trends, a
 GitHub-style activity **heatmap**, and a combined **"All"** dashboard with rule-based encouragement.
 Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that reacts to progress.
 
-- **Who:** Rifat only. Google sign-in locked to a single-email allowlist. Public URL, private data.
+- **Who:** anyone with an account — email + password or Google. Every row is scoped to its owner by
+  RLS; `public.users.status` can suspend one. (Was: Rifat only, behind a single-email allowlist.)
 - **Stack:** Next.js 16.2 (App Router, Turbopack) + React 19.2 · Tailwind v4 + shadcn/ui · `motion` v12 ·
   Recharts 3.10 · Supabase (Postgres + Google auth + `@supabase/ssr`, Next 16 uses `proxy.ts`). Free tiers.
-- **Rules:** all "today/yesterday", streaks, and heatmap buckets computed in **Asia/Dhaka (UTC+6)**.
-  Backfill window = **today + yesterday only**, then locked. Currency = **৳ BDT**. English only.
+- **Rules:** all "today/yesterday", streaks, and heatmap buckets computed in **each user's own
+  timezone** (default Asia/Dhaka). Backfill window = **today + yesterday only**, then locked.
+  Currency is **per-user** (default ৳ BDT). English only.
 - **Later:** Phase 1.5 = per-exercise logging, seasonal themes, data export. v2 = AI "type-what-I-did"
   chatbot, weather, illustrated mascot.
 
@@ -56,7 +81,7 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 - ✅ Theme system — dark default + light, theme toggle, design tokens
 - ✅ PWA — manifest (`src/app/manifest.ts`) + **service worker** (`public/sw.js`: push + offline fallback), registered app-wide, `/offline` route
 - ✅ Supabase client wiring — browser/server clients + `proxy.ts` session refresh; **live project connected, migrations `0001`+`0002` applied**
-- 🟡 Google OAuth + single-email allowlist — `/login`, `app/auth/actions.ts`, `auth/callback` built against the live project; end-to-end sign-in still to be exercised
+- 🟡 Auth — Google OAuth **+ email/password signup** (`/login`, `/signup`, `/forgot-password`, `/auth/reset`, `/suspended`); the single-email allowlist was removed in V3.0 Phase B in favour of `public.users.status`. End-to-end sign-in still to be exercised
 - ✅ Row-Level Security (RLS) — full schema + policies + on-signup seed trigger in `supabase/migrations/0001_init.sql`
 
 ### Phase 2 — Reusable primitives
@@ -90,9 +115,34 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 - ⬜ Seasonal accent themes
 - ⬜ Data export (JSON/CSV)
 
-### v2 (design-for, not building)
-- ⬜ AI chatbot (type a sentence → update dashboards)
-- ⬜ Weather integration · illustrated mascot · AI-written advice
+### V2.0 — two pillars, 7 phases ✅ **complete**
+> Plan: `C:\Users\User\.claude\plans\if-v1-is-finished-whimsical-quail.md`. Pillar 1 = AI logging
+> (phases 1–3), Pillar 2 = targets & warnings (phases 4–6), phase 7 = integration/polish.
+- ✅ **Phase 1 — AI foundations & pure parse layer**: `groq-sdk`+`zod`+`vitest` added; `GROQ_API_KEY` documented; `src/lib/ai/groq.ts` (server-only client) + `src/lib/ai/parse-log.ts` (intent contract, zod schema, prompt, pure intent→action mapping) + 13 passing unit tests.
+- ✅ **Phase 2 — `parseLog` Server Action**: `quick-add/ai-actions.ts` calls Groq in JSON mode with the Phase-1 prompt + server-built context, zod-validates the reply, and returns dispatch descriptors. Never throws — bad key/network/JSON all come back as `{ ok:false, error }`. Offline `demoParse` fallback when signed out or key-less. **Model swapped** to `openai/gpt-oss-120b` (Groq retired `llama-3.3-70b-versatile`).
+- ✅ **Phase 3 — AI Log Box UI → review → save**: `components/quick-add/ai-log-box.tsx` (hero input → editable/removable chips → one Save) mounted above the manual tabs; `saveIntents` fans out to the existing V1 actions server-side. **Pillar 1 shipped** (live DB write still needs a signed-in pass — see session log).
+- ✅ **Phase 4 — Targets storage & Settings UI**: `lib/targets.ts` (the `Targets` shape, `DEFAULT_TARGETS`,
+  `TARGET_LIMITS`, `coerceTarget`/`parseTargets`) + `saveTargets` writing `profiles.settings.targets` (no migration)
+  + `components/settings/targets-card.tsx` mounted in Settings + the weekly cap now feeding the Life-Score money
+  signal via `lib/data/targets.ts` (`WEEKLY_BUDGET` demoted to the fallback).
+- ✅ **Phase 5 — Warning logic & component**: `computeTargetStatuses` (monthly/weekly caps on Dhaka boundaries,
+  weekly workout & check-in pace, project overdue + behind-pace) → `TargetStatus[]`, plus `attentionStatuses`/
+  `sectionStatuses`/`worstLevel` selectors and `components/dashboard/target-warning.tsx`
+  (`TargetBadge`/`TargetWarning`/`TargetWarnings`). 24 new unit tests.
+- ✅ **Phase 6 — Warnings wired into every section + Overview**: each section page fetches `getTargets()` and
+  renders `TargetWarnings` under its header (via `sectionTargetStatuses`, which blanks the targets a section
+  cannot judge from its own rows); `/projects` cards carry an Overdue/Behind-pace `TargetBadge` and the detail
+  route gets its own banner; the Overview gains a **"Needs attention"** strip and per-section-card badges.
+  **Pillar 2 shipped.**
+- ✅ **Phase 7 — Integration, polish & docs**: target status now nudges the Mood Mode tone (`moodState`) and the
+  mascot (`rabbitStateFor`) — cap-never-lift; **"this week"/"this month" reconciled to real Dhaka boundaries**
+  everywhere the user is shown one (see the session log — this fixed cards that contradicted the new banners);
+  sample projects given finish dates so demo exercises the warnings. **V2.0 complete.**
+
+### Beyond V2.0 (design-for, not building)
+- ⬜ 2.1 — AI reflections & advice (weekly summary over aggregates + target statuses)
+- ⬜ 2.2 — Income & savings (new domain + savings-goal target + new parser intents)
+- ⬜ Weather integration · illustrated mascot
 
 ---
 
@@ -124,6 +174,345 @@ service worker, push subscription code.
 ## 5. Session Log
 
 > Newest first. Each entry: date · what changed · what's next.
+
+### 2026-08-26 (latest) — V3.0 Phase B shipped: multi-user foundation
+
+Rabbit Verse is no longer single-user. Anyone can create an account, and every user brings their
+own timezone and currency. Data isolation already worked (0001's RLS is `auth.uid() = user_id` on
+all ten tables) — what changed is everything that assumed *one particular* user.
+
+- **Migration `0004_multi_user.sql`** (idempotent, safe to re-run):
+  - **`public.users`** — the roster `auth.users` can't be under the anon key: `email citext`,
+    `status ('active'|'suspended')`, `role`, backfilled from `auth.users`. RLS is **select-own and
+    nothing else**, so `status` is service-role-only — a suspended user cannot un-suspend themselves.
+  - **`profiles` → `user_profiles`** by *rename*, so existing rows, the PK, every FK and the
+    "own profile" policy survive. Gains `avatar_url`, `mascot`, `timezone`, `currency`, `locale`
+    (with shape check constraints; the real IANA/ISO validation is server-side).
+  - **`handle_new_user()` rewritten.** It's an `after insert on auth.users` trigger, so it already
+    runs *inside* the signup transaction: the roster row and profile inserts hard-fail, rolling the
+    account back rather than leaving an orphan. The category/plan **seeds** sit in their own
+    `exception when others then null` block — a seed hiccup must never cost somebody their account.
+    `seedProfileDefaults()` backfills that case. The `'Rifat'` fallback is now the email local-part.
+- **Accounts (B2).** Email + password signup alongside Google: `/signup`, password fields on
+  `/login`, `/forgot-password`, `/auth/reset`, `/suspended`. New `auth/actions.ts` — `signUpWithPassword`,
+  `signInWithPassword`, `requestPasswordReset`, `updatePassword` — with Supabase's developer-facing
+  errors mapped to calm copy, and **no account-enumeration oracle** (signup and reset give the same
+  reply whether or not the address exists). Auth chrome extracted to `components/auth/auth-shell.tsx`
+  so all five screens are one product.
+- **`ALLOWED_EMAIL` is deleted.** The gate is now `public.users.status`, enforced at the three
+  points where entry actually happens: password sign-in, `/auth/callback`, and `(app)/layout.tsx`
+  (which catches a mid-session suspension). Deliberately **not** in `proxy.ts` — that would cost a
+  DB round-trip on every request. The callback also validates its `next` param as a same-origin
+  path, so the reset link can't become an open redirect.
+- **Demo mode is now local-dev-only.** With signup open, a deployed instance must send a signed-out
+  visitor to `/login`, never to Rifat-shaped sample data. `NEXT_PUBLIC_DEMO_MODE` is honoured only
+  outside production; in production the sole trigger is having no Supabase keys.
+- **Per-user timezone (B3).** `lib/dates.ts`: `TZ` → `DEFAULT_TZ`, `dhakaToday` → `todayIn(tz)`,
+  `dhakaHour` → `hourIn(tz)`, plus `isWithinLogWindow(iso, tz)` and `greeting(tz)`. **The pure day
+  helpers were left alone** — they operate on ISO strings and were already timezone-free. New
+  **`lib/session.ts`** wraps `getSession` / `getLocaleContext` / `currentDay()` in `React.cache()`,
+  so the profile is read **once per request** instead of `getTargets()` re-querying 2–3× per route.
+  Every page and action now takes "today" from `currentDay()`. Changing timezone does **not** rewrite
+  history — stored dates are committed ISO days; the new zone applies going forward, and the
+  Settings copy says so.
+- **Per-user currency.** `taka()` is gone; new `lib/money.ts` formats through `Intl.NumberFormat`
+  with `currencyDisplay: "narrowSymbol"` (which is what keeps BDT as ৳). `LocaleProvider` +
+  `useMoney()` / `useCurrencySymbol()` seed the client tree from the layout, so ~15 literal ৳ across
+  expenses, quick-add, targets, the AI box and the overview follow the profile. `targets.ts` and
+  `motivation.ts` take the currency as a parameter (defaulting to BDT/en, so the existing tests hold).
+- **Settings → Preferences** is now a real `LocaleCard`: full IANA timezone list via
+  `Intl.supportedValuesOf` with the likely zones lifted to the top, plus a currency shortlist. Both
+  save on change and roll back on failure.
+- **The AI parser is locale-aware.** The prompt is told the user's currency and zone instead of
+  hardcoding Taka; `demoParse`'s money regex is built from their symbol/code/words ("$12",
+  "12 dollars"), not `৳|tk|taka`.
+- **Reminders** compare against each user's own zone. The old fixed `+6` offset also couldn't handle
+  DST; `localHHMM(tz)` via Intl can. The minute filter moved out of the query (the answer to
+  "is it 21:00?" now differs per user) and into memory, over only profiles that have a reminder set.
+- **Verified:** `tsc --noEmit`, `eslint` and `next build` all clean; `npm test` **73 → 92** with new
+  `dates.test.ts` (zone rollover, DST spring-forward, the log window shifting per user) and
+  `money.test.ts` (currencies, locales, compact, and junk-input fallbacks). Added `vitest.config.ts`
+  so tests resolve the `@/*` alias — that gap was forcing libs into relative imports.
+  In-browser: the demo dashboards, Expenses and Settings still render; `/login`, `/signup`,
+  `/forgot-password`, `/suspended` and `/auth/reset` all render against a production build with no
+  console errors, and `/signup` has no horizontal overflow at 375px.
+- **Still outstanding (needs a signed-in pass, can't be done in demo):** two accounts proving RLS
+  isolation, signup atomicity (force the trigger to raise → no orphan `auth.users` row; force only
+  the seed block → account still usable), a profile on `America/New_York` rolling over at NY
+  midnight, and USD flowing through every amount. Also unchanged: the reminders deploy (VAPID keys
+  + Edge Function) and the V2.0 signed-in pass.
+- **Next:** Phase C (mascot system) — `updatePlan.md` has it, and it's independent of B.
+
+### 2026-08-26 — V3.0 planned · Phase A shipped (correctness)
+
+- **V3.0 planned end to end.** Rifat asked what could be improved, then added three product
+  changes: **multi-user**, a **user-chosen mascot**, and **voice input** in the AI box. Full spec
+  in **`updatePlan.md`** (repo root, also at `…/plans/are-any-improvemnebt-in-whimsical-rabbit.md`).
+  Seven phases, A–G. Decisions taken: users create their own accounts (a `public.users` roster +
+  `public.user_profiles`, written **transactionally** by the existing signup trigger); **per-user
+  timezone *and* currency**; the mascot layer built **brand-agnostic** (Rifat is reworking the
+  title/logo separately); voice via **Groq Whisper**, not the Web Speech API, because the app is
+  used as an installed iOS PWA where `SpeechRecognition` is unreliable.
+- **Two framing findings from the audit.** Multi-user is *not* a data-model rewrite — RLS is
+  already `auth.uid() = user_id` on all ten tables and the signup trigger already seeds per-user
+  categories and a plan. The real cost is `TZ = "Asia/Dhaka"` as a module constant: a user abroad
+  would have their day roll over at Dhaka midnight, filing entries on the wrong date and breaking
+  streaks. Contained, though — `addDays`/`startOfWeek`/`eachDay`/`startOfMonth`/`daysBetween`
+  operate on ISO day strings and are **already timezone-free**; only four "what time is it now"
+  helpers need threading. **Redis** is deliberately *not* for tenancy (RLS does that, and caching
+  per-user rows is a leak risk) — it is for per-user rate limits on the **shared** Groq key,
+  a global daily circuit breaker, and `saveIntents` idempotency, once signup is open.
+- **⚠️ Bug fixed — every BMI was labelled "Healthy range."** The caption was a hardcoded string, so
+  a BMI of 32.7 read *Healthy range* in mint. New `src/lib/health.ts` classifies the four WHO bands
+  and returns the caption **and** its accent together, so the two can't drift apart again. Verified
+  in-browser across all four bands: 18.0 *Below healthy range* (gold), 23.8 *Healthy range* (mint),
+  27.7 *Above healthy range* (orange), 32.7 *Well above healthy range* (rose) — in both themes.
+- **⚠️ Bug fixed — "yesterday I weighed 78.5kg" was written to today.** The same class of bug fixed
+  for workouts last session; the fix never reached weight, which had no `date` field at all. The
+  weight **and** project intents now carry an optional `date` → `clampDate` → `log_date`, both
+  actions validate the today/yesterday window the way `setWorkoutDay` does, `log_date` joins each
+  action's field whitelist, and both chips gained the Today/Yesterday picker. `logProgress` and
+  `addCommit` honour it too, via a shared `resolveLogDate`. Verified: the sentence above now
+  produces a Body chip with **Yesterday** active.
+- **⚠️ Fixed — a card contradicting the banner above it.** The Workout "This week" caption fired
+  *"Consistency strong"* at a hardcoded `>= 3`, so a target of 5 could print it directly under a
+  banner saying *behind pace*. It now reads its verdict from the **target engine's own**
+  `workout-week` status — literally the same computation as the banner, so they cannot disagree.
+  `LOOK` (level → accent) is exported from `target-warning.tsx` rather than re-stated.
+- **⚠️ Fixed — an empty account told it was "Trending up — worth a glance."** `up = week >= prevWeek`
+  is `0 >= 0`, and `hasData` guarded only the stat card, not the panel subtitle or the chart colour.
+  Now a three-way `up | down | flat` behind one `WEEK_TONE` table — an unchanged week reads *Same as
+  last week* instead of a decline, and an empty one reads *Nothing logged yet*. Verified both ways.
+- **Fixed — "Average mood" was all-time**, over the full 364-day fetch, so a rough fortnight couldn't
+  move it. Now a 30-day window, labelled `Average mood 4/5 (30d)`.
+- **Verified** on the demo server (:3100) at 1280px and 375px, both themes: all eight routes 200,
+  zero console errors, zero horizontal overflow. `tsc --noEmit` clean · `next build` clean ·
+  **eslint 0 problems** · `npm test` **73/73** (+12: BMI classifier ×6, date handling ×6).
+- **Not verified (needs a signed-in pass):** the commit composer's day toggle only renders when
+  `canLog` is true, and the weight/commit writes themselves. Rolls into the standing V2.0 live pass.
+- **Noted, not fixed:** `projects/[id]/project-detail-view.tsx:16` defines a local `daysBetween`
+  duplicating the one in `lib/dates.ts`. Out of scope for Phase A.
+- **Next:** Phase B — the multi-user foundation (schema + accounts + per-user tz/currency).
+
+### 2026-08-26 (later) — Post-V2 audit: phase sweep + bug fixes
+- **Phase sweep.** Every roadmap phase is ticked as claimed. The only genuinely
+  unfinished items are **infrastructure, not code**: V1 Phase 6's reminders are code-complete
+  but need VAPID keys generated, the `send-reminders` Edge Function deployed, migration `0003`
+  run, and `NEXT_PUBLIC_VAPID_PUBLIC_KEY` set (`SUPABASE_SETUP.md` §6); and both V2 pillars still
+  want the **signed-in live pass**. Phase 1.5 (per-exercise logging, seasonal themes, export)
+  and V2.1/V2.2 remain deliberately not-started.
+- **⚠️ Bug fixed — a workout logged "yesterday" was written to today.** The workout intent had
+  no date field at all, so `setTodayWorkout` always stamped `dhakaToday()`. The AI box's own
+  example sentence — *"yesterday: ৳1200 groceries and a rest day"* — filed the expense on
+  yesterday and the rest day on **today**, overwriting a real session if one was already logged.
+  Fixed end to end: the intent schema and prompt gained an optional `date`, `intentToDispatch`
+  maps it to `log_date` (clamped to the today/yesterday window), the action is now
+  **`setWorkoutDay`** and validates `log_date` the same way the expense and journal actions do,
+  and the workout chip grew a Today/Yesterday picker. 3 new tests.
+- **⚠️ Bug fixed — a review chip's headline went stale the moment you edited it.** The summary
+  came from the server's first read of the sentence, so fixing a category still showed
+  "Uncategorized" — and that stale text is what a failure toast quotes. The summary is now
+  recomputed from the chip's live fields on every edit.
+- **⚠️ Bug fixed — numeric progress on a checklist project moved the ring, then didn't.**
+  `logProgress` bumped `current_value` even when the project's percentage is owned by
+  `recomputeProgress`, so the ring (and every warning quoting it) drifted until the next task was
+  ticked, then snapped back. It now refuses with *"This project's progress comes from its
+  checklist — tick a task instead."* Projects without a checklist are unchanged.
+- **Polish:** Settings' target toggle restores the app **default** when switched back on, not
+  `TARGET_LIMITS.min` (turning the monthly cap on used to hand you a ৳100 cap you were instantly
+  over); `1 workout` / `1 journal entry` singulars on the Overview cards; the demo weekly budget
+  reads from `DEFAULT_TARGETS` instead of a second hardcoded 6000.
+- **Demo consistency:** sample project percentages now sit on multiples of 20% so the list card
+  and the checklist-driven detail ring quote the same number (p1 was 62% on the list and 60% on
+  its own page). Live mode never had this gap — `recomputeProgress` writes the checklist
+  percentage into `current_value` itself.
+- **eslint is clean for the first time.** The two long-standing `set-state-in-effect` errors are
+  gone: `CountUp` reads `prefers-reduced-motion` through `useSyncExternalStore` and renders the
+  final value directly when motion is reduced, and `ThemeToggle`'s hydration guard is the same
+  external-store trick instead of `useState` + `useEffect`. No behaviour change either side.
+- **Verified** on the demo server (:3100): the *"yesterday: …"* example now puts **both** chips on
+  Yesterday; editing a chip's category rewrites its headline live; all nine routes 200; the
+  Overview attention strip, the Projects banners/badges and each detail ring all quote matching
+  percentages; no console errors. `tsc --noEmit` clean · `next build` clean · `npm test` **61/61**
+  (+2) · **eslint 0 problems**.
+- **Next:** unchanged — one signed-in pass to exercise both pillars against real rows, then the
+  reminders deploy, then V2.1 or V2.2.
+
+### 2026-08-26 — V2 Phases 6 & 7 — **V2.0 complete**
+- **Phase 6 — warnings where the work happens**
+  - Every section page now fetches `getTargets()` alongside its own data and renders `TargetWarnings` under
+    the header: Expenses, Workout, Mental Health, Projects. Each uses the new **`sectionTargetStatuses`**,
+    which runs the targets through **`targetsForSection`** first — without that, an array the page never
+    fetched would read as "nothing logged" and warn about a section it knows nothing about.
+  - `TargetInput`’s data arrays became optional so a page can hand over only its own slice.
+  - **Projects**: the list shows a banner per off-track project *and* an **Overdue / Behind pace** badge on
+    that project’s card; the detail route renders its own banner from `projectTargetStatus`.
+  - **Overview**: a **"Needs attention · N"** strip (worst first, capped at 3) plus a status pill on each
+    section card (`SectionCard` gained a `badge` slot). `getOverviewData` computes the full `TargetStatus[]`
+    once, server-side, and returns it.
+  - Demo mode evaluates `DEFAULT_TARGETS` against the sample rows, so the whole feature is visible without keys.
+- **Phase 7 — making the two pillars feel like one product**
+  - **Target status nudges the mood and the mascot**, *cap-never-lift*: `moodState(signals, score, level)` steps
+    a streak down to great on a `warn` and caps at steady on an `over`, but can never push a week *below* what
+    the score alone gives; `rabbitStateFor(..., level)` holds back the celebration while something is `over`.
+    Wired through `getOverviewData` **and** `getMoodState`, so the app-wide `<html data-mood>` aura reflects it too.
+  - **⚠️ Bug found and fixed — "this week" meant two different things.** The app measured weekly/monthly totals
+    on **rolling 7- and 30-day windows** while the new target engine uses **real Dhaka weeks and calendar
+    months**. On Expenses the banner read *"৳3,480 of ৳6,000, on track"* while the card right below it read
+    *"Over budget"*, and the Overview footer disagreed with its own warning. Fixed by moving every
+    **user-facing** weekly/monthly claim onto the same boundaries the targets use — Expenses’ This week /
+    This month / Avg-per-day cards, the Overview’s spend cards and footer, `rabbitSays`, and `weekWorkouts`
+    on both the Overview and Workout. Expenses’ "vs last week" now compares the *same elapsed days* of the
+    previous week, so a Wednesday is not measured against a full week. `computeSignals` keeps its rolling
+    window on purpose — it is a smoothing input to the Life Score, never labelled "this week" to the user.
+  - **⚠️ Bug found and fixed — a warning disagreeing with the ring beside it.** `projectTargetStatus` read
+    `current/targetValue` while the project views draw a **checklist-driven** ring; the detail page showed a
+    60% ring under a banner saying 62%. The status now uses the same checklist-first rule.
+  - **Sample projects gained estimated finish dates** (p1 deliberately overdue, p4 behind pace, p2/p5 on pace,
+    p3/p6 dateless) — without them the demo could never show the project half of Pillar 2.
+  - Polish: `1 workout` vs `1 workouts` on the Workout header.
+- **Open items from the plan, now decided**
+  - **Chip-edit affordances**: keep what Phase 3 shipped (select for category/project, toggle for the day,
+    emoji row for mood, plain inputs for numbers). No change needed.
+  - **`AiLogBox` on the Overview?** **No** — it stays Quick-Add-only. The Overview’s job is reflection, and it
+    already carries the attention strip; two competing hero inputs would blur both.
+  - **Mental Health target in V2.0?** **Yes** — shipped as `weeklyCheckIns` (default 5/week, switchable off).
+- **Verified** on the demo server at 1280px and 375px: the Overview strip lists 3 warnings and the Projects
+  card wears a rose "Off track" pill; `/expenses` banner and its This-month card now both read ৳34,430;
+  `/projects` shows two banners with matching Overdue/Behind-pace badges while on-pace and date-less projects
+  show none; `/projects/p1` banner and ring now both say 60%; `/workout` and `/mental-health` are on track so
+  they correctly render **nothing**. All six routes 200, no console errors, no horizontal overflow at 375px.
+- **Still not verified:** the **live signed-in pass** — saving targets to `profiles.settings`, the AI box
+  writing real rows, and warnings computed from real data. Both V2 pillars need one authenticated session to
+  close out; the browser here has no Google session and sign-in cannot be automated.
+- `tsc --noEmit` clean; `next build` clean; `npm test` **59/59** (12 new). eslint: **no new** issues (the same
+  2 pre-existing `set-state-in-effect` errors).
+- **Next:** one signed-in pass to confirm both pillars against real data. After that, V2.1 (AI reflections over
+  aggregates + target statuses) or V2.2 (income & savings) per the plan.
+
+### 2026-08-26 — V2 Phases 4 & 5 (Pillar 2: targets & the warning engine)
+- **Groq model re-checked against the live API.** `llama-3.3-70b-versatile` is still gone; the roster on
+  this key is `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `groq/compound(-mini)`, `qwen/qwen3.6-27b`,
+  `qwen/qwen3.8-27b`, plus whisper/guard models. The code already runs **`openai/gpt-oss-120b`** —
+  confirmed live with a JSON-mode call. **No change needed.**
+- **Phase 4 — targets storage & Settings UI**
+  - `src/lib/targets.ts` (pure, client-safe): the `Targets` shape — `monthlyExpenseCap`,
+    `weeklyExpenseCap`, `weeklyWorkouts`, `weeklyCheckIns` — where **`null` means "target switched
+    off"** and a *missing* key falls back to `DEFAULT_TARGETS` (৳20,000 / ৳6,000 / 4 / 5), so guardrails
+    exist before the card is ever opened. `coerceTarget` clamps to `TARGET_LIMITS`; `parseTargets`
+    normalises whatever the JSONB holds.
+  - `saveTargets` (`settings/actions.ts`) mirrors `saveReminderTime` — writes `profiles.settings.targets`,
+    **no migration**. Every field is re-coerced server-side, so a tampered payload can't park a nonsense
+    cap. Revalidates all five dashboards, since targets change what each one warns about.
+  - `components/settings/targets-card.tsx` — one row per target with an on/off switch (off hides the
+    input and shows "No target — warnings off"; switching back on restores the saved value) and a single
+    Save that reflects the clamped values the server actually stored.
+  - `lib/data/targets.ts` `getTargets()` is the server read. **The weekly cap is now real**: `getOverviewData`
+    and `getMoodState` score the money signal against the user's own cap, with `WEEKLY_BUDGET` demoted from
+    a hardcoded 6000 to the documented fallback (sourced from `DEFAULT_TARGETS`).
+- **Phase 5 — the warning engine (pure)**
+  - `computeTargetStatuses({today, targets, expenses, workoutLogs, journal, projects})` → `TargetStatus[]`
+    (`{id, section, level: "ok"|"warn"|"over", label, detail, progress}`). Rules:
+    **spend caps** — amber from 80% (`WARN_RATIO`), red only *above* the cap; Dhaka calendar month and
+    Mon-start week. **Weekly pace** (workouts, check-ins) — `over` once the remaining sessions can no
+    longer fit in the days left, `warn` when every remaining day has to count, else `ok`; check-ins count
+    one per day, rest days don't count as workouts. **Projects** — `over` when past `target_date` and not
+    completed, `warn` when progress lags elapsed time by more than `BEHIND_PACE_SLACK` (15%); completed or
+    date-less projects produce nothing.
+  - Selectors `attentionStatuses` (non-ok, worst first) / `sectionStatuses` / `worstLevel`.
+  - `components/dashboard/target-warning.tsx` — `TargetBadge` (pill), `TargetWarning` (banner, `role="alert"`
+    at `over`), `TargetWarnings` (the non-ok ones stacked, renders **nothing** when all clear, optional `limit`).
+    Server-safe: no state, no effects.
+  - **New design token `--accent-rose`** (`#ff7a8a` dark / `#e0455c` light) — the app had no "something is
+    wrong" hue; warn reuses `--accent-orange`, matching the AI box's unresolved-chip styling.
+  - `lib/dates.ts` gains `startOfMonth` / `endOfMonth` / `daysInMonth` / `daysBetween`.
+- **Verified** on the demo server (`rabbit-verse-demo`, :3100) via a throwaway preview route (since deleted):
+  all three banner levels render in their correct accents (mint / orange / rose, confirmed in **both** themes —
+  `color-mix` is not stripped), a seeded fixture produced the expected 6 statuses (over-cap, overdue project,
+  behind-pace project, workout + check-in pace, weekly cap ok and correctly filtered out), the card's toggles
+  hide/restore their inputs and enable Save, and Save's auth guard surfaces **"Please sign in first."** as a
+  toast instead of throwing. `/settings` in demo shows the Targets panel in its sign-in placeholder state,
+  matching the Reminders pattern. No console errors; zero horizontal overflow at 375px.
+- **Not yet verified:** the **live** signed-in round trip (saving targets → rows in `profiles.settings` →
+  values re-rendered). Google OAuth needs a real sign-in, which this session couldn't perform — same gap
+  as the Phase-3 live write. Do both in one signed-in pass.
+- **Deliberately not done here:** wiring warnings into the section views — that is **Phase 6**, and the
+  components/selectors it needs are now in place.
+- `tsc --noEmit` clean; `next build` clean; `npm test` **47/47** (24 new). eslint: **no new** issues (the same
+  2 pre-existing `set-state-in-effect` errors in `theme-toggle.tsx`/`count-up.tsx`).
+- **Next:** Phase 6 — render `TargetWarnings` in `expenses-view` / `workout-view` / `projects-view` +
+  `/projects/[id]` and an Overview attention strip, with the section pages fetching `getTargets()`.
+
+### 2026-08-26 — V2 Phases 2 & 3 (Pillar 1: AI logging, end to end)
+- **Phase 2 — `parseLog` Server Action** (`src/app/(app)/quick-add/ai-actions.ts`):
+  - Builds the model's context **server-side from the session** (the user's own categories + ongoing
+    projects + Dhaka today/yesterday) rather than trusting anything the client sends.
+  - Calls Groq with `response_format: { type: "json_object" }`, `temperature: 0`, then
+    `JSON.parse` → `parseResultSchema.safeParse` → `resultToDispatches`. Sentence capped at 500 chars.
+  - **Never throws**: a missing key, an unreachable API, unparseable JSON, or schema-invalid output
+    each return `{ ok: false, error }` for the box to show.
+  - Signed out or no `GROQ_API_KEY` → `demoParse`, a small offline regex parser (money / workout /
+    rest day / `n/5` mood / kg), so the whole flow previews without keys.
+- **⚠️ Model changed — `llama-3.3-70b-versatile` is retired.** Groq 404s it
+  (`model_not_found`); it is gone from `/v1/models`. Verified the live roster and switched
+  `GROQ_MODEL` to **`openai/gpt-oss-120b`**, the strongest JSON-mode model now available on the key.
+  Verified against the real API: *"ran 5k this morning, spent ৳400 on lunch and 120 taka on a bus,
+  read 2 chapters of my book, feeling good 4/5, weighed in at 78.5kg"* → **6 correct intents**
+  (Cardio workout, 2 expenses with categories resolved, project progress, mood 4, 78.5 kg); and
+  *"yesterday I skipped the gym and felt awful"* → rest day + mood 1 dated **yesterday**.
+- **Phase 3 — the AI Log Box** (`src/components/quick-add/ai-log-box.tsx`, mounted in
+  `quick-add-hub.tsx` above the manual tabs, behind an "or log it by hand" divider):
+  - idle → parsing → review → saving, in the existing glass/`motion`/`sonner` style. Example-sentence
+    chips, ⌘/Ctrl+Enter to parse, 500-char cap.
+  - **Review chips**, one per intent, each with a real editor (amount + category select + day toggle +
+    note · did-it/rest + session type · weight/body-fat · 5-emoji mood + day + reflection · goal select
+    + amount) and a remove button. Anything the parser couldn't resolve is ringed amber and **blocks
+    Save** until filled (`dispatchUnresolved`).
+  - **`saveIntents`** dispatches through the existing `addExpense`/`setTodayWorkout`/`logWeight`/
+    `saveJournal`/`logProgress` — one Server Action doing the fan-out server-side (Next dispatches
+    client actions sequentially anyway, so this is one round trip and one consistent re-render).
+  - **Defence in depth on the way back in:** the client's reviewed chips are re-validated with
+    `dispatchSchema` (action whitelist, string-only fields, ≤10 items), required fields re-checked, and
+    FormData rebuilt from a per-action **field whitelist** (`sanitizeFields`) — so a tampered payload
+    can't smuggle fields into a write path. Each target action still re-checks auth, RLS and the
+    today/yesterday window itself. Partial failures come back **keyed by index**, and the box keeps
+    only the failed chips so a retry can't double-write what already landed.
+- **Verified** (demo server, `rabbit-verse-demo` on :3100): *"spent ৳450 on lunch, did legs, feeling
+  good 4/5, 78.5kg this morning"* → 4 chips; unresolved "lunch" category correctly **blocked Save**
+  until picked; removing a chip dropped the count to 3; Save fired the toast and cleared the box.
+  *"yesterday I spent 300 taka on transport and it was a rest day"* → expense ৳300 with **Transport
+  auto-resolved** and the **Yesterday** toggle active, plus a rest day. No console or server errors.
+- **Not yet verified:** the **live** signed-in write (real rows in Supabase + Overview/Life-Score
+  refresh). The Groq call is verified against the real API and the dispatch logic by tests, but the
+  authenticated end-to-end pass needs a sign-in — do this first next session.
+- **Known limitation (matches V1):** `setTodayWorkout` always writes *today* — it has no date column
+  in its contract — so "yesterday I skipped the gym" records the rest day against today. Expenses and
+  journal entries do honour yesterday. Worth revisiting in Phase 7.
+- `tsc --noEmit` clean; `npm test` **23/23** (10 new: `dispatchUnresolved`, `sanitizeFields`,
+  `dispatchSchema`, `demoParse`). eslint: **no new** issues (same 2 pre-existing
+  `set-state-in-effect` errors in `theme-toggle.tsx`/`count-up.tsx`).
+- **Next:** Phase 4 — targets storage (`profiles.settings`) + the Settings targets card.
+
+### 2026-08-26 — V2 kickoff · Phase 1 (AI foundations & pure parse layer)
+- **V2 planned end-to-end:** after V1, agreed V2.0 = two pillars — (1) AI natural-language logging
+  ("type what I did" → parse → review → save over the existing sections) and (2) targets & warnings
+  (monthly spend cap, project finish-date overdue, weekly workout pace). Chose **Groq** as the LLM
+  (fast, free tier), **review-before-save**, **text input** (iOS dictation covers voice). Split into
+  **7 executable phases** — plan at `…/plans/if-v1-is-finished-whimsical-quail.md`.
+- **Phase 1 shipped (no user-visible change):**
+  - Deps: `groq-sdk`, `zod` (runtime) + `vitest` (dev, first tests in the repo); `npm test` script added.
+  - `GROQ_API_KEY` documented in `.env.local.example` + `SUPABASE_SETUP.md` (server-side secret, no `NEXT_PUBLIC_`).
+  - `src/lib/ai/groq.ts` — server-only singleton client + `GROQ_MODEL` (`llama-3.3-70b-versatile`) + `isGroqConfigured()`.
+  - `src/lib/ai/parse-log.ts` — the `LogIntent` discriminated-union contract + `zod` schema, the
+    system/user prompt, and the **pure** `intentToDispatch` mapping that turns a validated intent into
+    the exact FormData fields each existing action reads (`addExpense`/`setWorkout`/`logWeight`/
+    `saveJournal`/`logProgress`), resolving category/project hints and clamping dates to today/yesterday,
+    flagging unresolved refs for the review UI.
+  - `src/lib/ai/parse-log.test.ts` — 13 tests (resolution, mapping per kind, schema accept/reject). All pass.
+- `tsc --noEmit` clean; `npm test` 13/13. eslint: **no new** issues (the 2 pre-existing
+  `set-state-in-effect` errors in `theme-toggle.tsx`/`count-up.tsx` remain).
+- **Next:** Phase 2 — the `parseLog` Server Action that calls Groq in JSON mode, validates with the
+  Phase-1 schema, and returns typed intents (demo mode returns a canned parse).
 
 ### 2026-08-02 — Data layer split per feature
 - Broke the single `lib/data/queries.ts` (~480 lines) into per-feature modules under `lib/data/`:

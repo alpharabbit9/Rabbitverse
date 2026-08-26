@@ -17,7 +17,7 @@ export async function getWorkoutData(today: string): Promise<{
     supabase.from("workout_logs").select("log_date,done,plan_label,note").gte("log_date", start).order("log_date"),
     supabase.from("body_metrics").select("log_date,weight_kg,body_fat_pct").order("log_date"),
     supabase.from("workout_plan_days").select("weekday,label,focus"),
-    supabase.from("profiles").select("height_cm").maybeSingle(),
+    supabase.from("user_profiles").select("height_cm").maybeSingle(),
   ]);
 
   const workoutLogs = shapeWorkoutLogs(logs);

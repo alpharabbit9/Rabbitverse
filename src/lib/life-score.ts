@@ -1,3 +1,4 @@
+import type { TargetLevel } from "./targets";
 import type { MoodState } from "./types";
 import { clamp } from "./utils";
 
@@ -44,12 +45,21 @@ export function scoreLabel(score: number): { label: string; tone: string } {
   return { label: "Low", tone: "var(--accent-orange)" };
 }
 
-/** Decide the Mood Mode tone from the week's signals. */
-export function moodState(s: LifeSignals, score: number): MoodState {
-  if (s.streakDays >= 10 && score >= 90) return "streak";
-  if (score >= 82) return "great";
-  if (score < 60) return "difficult";
-  return "steady";
+/**
+ * Decide the Mood Mode tone from the week's signals.
+ *
+ * `targetLevel` (V2 Pillar 2) is the worst of the user's target statuses. It
+ * only ever *caps* the mood, never lifts it: being over a cap or past a
+ * deadline shouldn't read as a great week, but falling behind also shouldn't
+ * drag a genuinely good week down to "difficult". A calm nudge, not a scold.
+ */
+export function moodState(s: LifeSignals, score: number, targetLevel: TargetLevel = "ok"): MoodState {
+  const base: MoodState =
+    s.streakDays >= 10 && score >= 90 ? "streak" : score >= 82 ? "great" : score < 60 ? "difficult" : "steady";
+
+  if (targetLevel === "over" && (base === "streak" || base === "great")) return "steady";
+  if (targetLevel === "warn" && base === "streak") return "great";
+  return base;
 }
 
 export const MOOD_COPY: Record<MoodState, { title: string; sub: string }> = {

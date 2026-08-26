@@ -82,7 +82,7 @@ export interface SignalInput {
   journal: JournalEntry[];
   activity: DayActivity[];
   streakDays: number;
-  /** weekly spending budget in ৳ */
+  /** weekly spending budget, in the user's currency */
   budget: number;
 }
 

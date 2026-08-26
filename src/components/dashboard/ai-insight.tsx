@@ -1,11 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { Icon } from "@/components/icon";
+import { useCurrencySymbol } from "@/components/locale-provider";
 
 /**
  * Teaser for the v2 AI logging feature: type a sentence, every dashboard updates.
  * In v1 this links to the manual quick-add flow.
  */
 export function AIInsight() {
+  const symbol = useCurrencySymbol();
   return (
     <div className="glass relative overflow-hidden rounded-2xl p-5">
       <div className="mb-3 flex items-center gap-2">
@@ -22,7 +26,7 @@ export function AIInsight() {
         className="flex items-center gap-3 rounded-xl border border-border bg-card-hover/60 px-4 py-3 text-sm text-fg-muted transition-colors hover:border-border-strong"
       >
         <Icon name="PenLine" size={16} />
-        <span className="truncate">Worked 3h, gym 1h, spent ৳450, feeling good…</span>
+        <span className="truncate">Worked 3h, gym 1h, spent {symbol}450, feeling good…</span>
       </Link>
       <p className="mt-3 text-xs text-fg-muted">
         Soon: describe your day in one line and Rabbit updates every dashboard automatically. For now, tap to log manually.

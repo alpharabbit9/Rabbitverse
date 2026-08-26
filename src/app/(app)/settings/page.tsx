@@ -1,4 +1,3 @@
-import { dhakaToday } from "@/lib/dates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileSummary } from "@/lib/data/profile";
@@ -8,12 +7,21 @@ import { ThemeOrb } from "@/components/theme-orb";
 import { Icon } from "@/components/icon";
 import { ProfileAvatar } from "@/components/layout/profile-avatar";
 import { RemindersCard } from "@/components/settings/reminders-card";
+import { TargetsCard } from "@/components/settings/targets-card";
+import { getTargets } from "@/lib/data/targets";
+import { DEFAULT_TARGETS } from "@/lib/targets";
 import { signOut } from "@/app/auth/actions";
+import { describeTimeZone } from "@/lib/locale";
+import { currencySymbol } from "@/lib/money";
+import { currentDay, getLocaleContext, getSession } from "@/lib/session";
+import { LocaleCard } from "@/components/settings/locale-card";
+import { MascotCard } from "@/components/settings/mascot-card";
+import { DEFAULT_MASCOT, MASCOT_NAMES } from "@/components/mascot/types";
 
-/** Read the saved Dhaka-local reminder time from profiles.settings (default 21:00). */
+/** Read the saved reminder time (user-local "HH:MM") from user_profiles.settings. */
 async function getReminderTime(): Promise<string> {
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("settings").maybeSingle();
+  const { data } = await supabase.from("user_profiles").select("settings").maybeSingle();
   const settings = (data?.settings ?? {}) as { reminderTime?: string };
   return settings.reminderTime ?? "21:00";
 }
@@ -29,9 +37,12 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default async function SettingsPage() {
   const p = isSupabaseConfigured
-    ? await getProfileSummary(dhakaToday())
+    ? await getProfileSummary(await currentDay())
     : { name: sampleProfile.name, email: null, avatarUrl: null, level: sampleProfile.level, streakDays: sampleProfile.streakDays, xp: 0, xpToNext: 1 };
   const reminderTime = isSupabaseConfigured ? await getReminderTime() : "21:00";
+  const targets = isSupabaseConfigured ? await getTargets() : DEFAULT_TARGETS;
+  const { tz, currency } = await getLocaleContext();
+  const mascot = (await getSession())?.mascot ?? DEFAULT_MASCOT;
 
   return (
     <div className="space-y-6">
@@ -61,9 +72,46 @@ export default async function SettingsPage() {
           <p className="text-xs text-fg-muted">Dark is Rabbit Verse&apos;s home. A separate, airy light theme is available too.</p>
         </Panel>
 
-        <Panel title="Preferences">
-          <Row label="Currency" value="৳ BDT" />
-          <Row label="Timezone" value="Asia/Dhaka (UTC+6)" />
+        <Panel title="Preferences" subtitle="Where and in what you're logging">
+          {isSupabaseConfigured ? (
+            <LocaleCard timezone={tz} currency={currency} />
+          ) : (
+            <>
+              <Row label="Currency" value={`${currencySymbol(currency)} ${currency}`} />
+              <Row label="Timezone" value={describeTimeZone(tz)} />
+              <p className="pt-3 text-xs text-fg-muted">Sign in to set your own timezone and currency.</p>
+            </>
+          )}
+        </Panel>
+
+        <Panel title="Mascot" subtitle="Who shows up on your dashboard">
+          {isSupabaseConfigured ? (
+            <MascotCard initial={mascot} />
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm">
+              <Icon name="Sparkles" size={18} style={{ color: "var(--accent-purple)" }} />
+              <div>
+                <div className="font-medium">Sign in to pick a mascot</div>
+                <div className="text-xs text-fg-muted">
+                  Demo mode always shows the {MASCOT_NAMES[DEFAULT_MASCOT]}. Six creatures are waiting.
+                </div>
+              </div>
+            </div>
+          )}
+        </Panel>
+
+        <Panel title="Targets" subtitle="What Rabbit measures you against" className="lg:col-span-2">
+          {isSupabaseConfigured ? (
+            <TargetsCard initial={targets} />
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm">
+              <Icon name="Target" size={18} style={{ color: "var(--accent-gold)" }} />
+              <div>
+                <div className="font-medium">Sign in to set targets</div>
+                <div className="text-xs text-fg-muted">Spend caps, weekly workouts and check-ins are saved to your profile.</div>
+              </div>
+            </div>
+          )}
         </Panel>
 
         <Panel title="Reminders">

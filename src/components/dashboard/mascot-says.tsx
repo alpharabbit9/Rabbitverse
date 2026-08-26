@@ -2,17 +2,19 @@
 
 import { motion } from "motion/react";
 import { Icon } from "@/components/icon";
-import { Rabbit } from "@/components/mascot/rabbit";
+import { useMascot } from "@/components/mascot/provider";
 import type { Insight } from "@/lib/motivation";
 
-export function RabbitSays({ insights }: { insights: Insight[] }) {
+export function MascotSays({ insights }: { insights: Insight[] }) {
+  const { name, Component: Mascot } = useMascot();
+
   return (
     <div className="glass relative overflow-hidden rounded-2xl p-5">
       <div className="mb-3 flex items-center gap-2">
         <span className="grid size-7 place-items-center rounded-lg bg-card-hover">
           <Icon name="Sparkles" size={15} style={{ color: "var(--accent-purple)" }} />
         </span>
-        <h3 className="font-semibold">Rabbit says</h3>
+        <h3 className="font-semibold">{name} says</h3>
       </div>
       <ul className="space-y-2.5 pr-20 sm:pr-28">
         {insights.map((ins, i) => (
@@ -29,7 +31,7 @@ export function RabbitSays({ insights }: { insights: Insight[] }) {
         ))}
       </ul>
       <div className="pointer-events-none absolute -bottom-2 right-1 opacity-90">
-        <Rabbit state="walking" size={96} glow />
+        <Mascot state="walking" size={96} glow />
       </div>
     </div>
   );

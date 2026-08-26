@@ -14,6 +14,7 @@ import {
   Dumbbell,
   Flame,
   FolderKanban,
+  Globe,
   Heart,
   HeartPulse,
   Home,
@@ -38,15 +39,16 @@ import {
   Utensils,
   Wallet,
   Wind,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
 const REGISTRY: Record<string, LucideIcon> = {
   Activity, ArrowDown, ArrowRight, ArrowUp, Bell, BookOpen, Brain, Bus, Calendar,
-  Check, CheckCircle2, ChevronRight, Dumbbell, Flame, FolderKanban, Heart, HeartPulse,
+  Check, CheckCircle2, ChevronRight, Dumbbell, Flame, FolderKanban, Globe, Heart, HeartPulse,
   Home, LayoutDashboard, Menu, Moon, MoreHorizontal, NotebookPen, PenLine, Play, Plus, ReceiptText,
   Search, Settings, ShoppingBag, Sparkles, Star, Sun, Target, TrendingDown, TrendingUp,
-  Utensils, Wallet, Wind,
+  Utensils, Wallet, Wind, X,
 };
 
 export function Icon({
