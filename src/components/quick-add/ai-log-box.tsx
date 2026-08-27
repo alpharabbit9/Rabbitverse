@@ -14,10 +14,12 @@ import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
-import { parseLog, saveIntents } from "@/app/(app)/quick-add/ai-actions";
+import { parseLog, saveIntents, transcribe } from "@/app/(app)/quick-add/ai-actions";
 import { type Dispatch, dispatchUnresolved } from "@/lib/ai/parse-log";
 import { cn } from "@/lib/utils";
 import { useCurrencySymbol } from "@/components/locale-provider";
+import { MAX_RECORDING_SECONDS, useVoiceRecorder } from "@/lib/use-voice-recorder";
+import { Waveform } from "@/components/quick-add/waveform";
 
 type Cat = { id: string; name: string; color: string; icon: string };
 type Proj = { id: string; name: string; unit: string };
@@ -40,6 +42,9 @@ const CHIP_STYLE: Record<Dispatch["kind"], { icon: string; accent: string; label
 
 const inputCls =
   "w-full rounded-xl border border-border bg-card-hover/60 px-3 py-2 text-sm outline-none transition-colors focus:border-border-strong";
+
+/** `m:ss` for the recorder's elapsed / cap readout. */
+const fmtTime = (secs: number) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
 
 /**
  * The chip's headline, derived from the *current* field values. The server's
@@ -70,12 +75,15 @@ function summarize(d: Dispatch, categories: Cat[], projects: Proj[], sym: string
 
 export function AiLogBox({
   demo,
+  voiceReady,
   categories,
   projects,
   today,
   yesterday,
 }: {
   demo: boolean;
+  /** Groq configured server-side — the mic button is hidden entirely without it. */
+  voiceReady: boolean;
   categories: Cat[];
   projects: Proj[];
   today: string;
@@ -88,6 +96,37 @@ export function AiLogBox({
   const [offline, setOffline] = useState(false);
   const [parsing, startParse] = useTransition();
   const [saving, startSave] = useTransition();
+  const [transcribing, startTranscribe] = useTransition();
+
+  // Voice input (Phase D). The finished clip is transcribed and dropped into the
+  // textarea — editable, and never auto-parsed. Same review-before-commit rule
+  // the rest of the box follows.
+  const { supported, recording, elapsed, analyser, start, stop, cancel } = useVoiceRecorder({
+    onComplete: (blob, fileName) =>
+      startTranscribe(async () => {
+        const fd = new FormData();
+        fd.append("audio", blob, fileName);
+        const res = await transcribe(fd);
+        if (!res.ok) {
+          toast.error(res.error ?? "Couldn't transcribe that.");
+          return;
+        }
+        setSentence((prev) => (prev.trim() ? `${prev.trim()} ${res.text}` : res.text));
+        toast.success("Transcribed — review it, then tap Log it.");
+      }),
+    onError: (message) => toast.error(message),
+  });
+
+  const micAvailable = voiceReady && supported;
+  const busy = parsing || saving || recording || transcribing;
+
+  const onMic = () => {
+    if (demo) {
+      toast("Sign in to use voice input.");
+      return;
+    }
+    void start();
+  };
 
   const blocked = items?.some((d) => dispatchUnresolved(d).length > 0) ?? false;
 
@@ -98,7 +137,7 @@ export function AiLogBox({
   };
 
   const parse = () => {
-    if (!sentence.trim() || parsing) return;
+    if (!sentence.trim() || busy) return;
     startParse(async () => {
       const res = await parseLog(sentence);
       if (!res.ok) {
@@ -117,8 +156,12 @@ export function AiLogBox({
   const save = () => {
     if (!items?.length || saving || blocked) return;
     const current = items;
+    // A fresh key per click. If the framework retries this exact dispatch, the
+    // server de-dupes it (Phase E); a new click after a partial failure gets a
+    // new key and goes through.
+    const key = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     startSave(async () => {
-      const res = await saveIntents(current);
+      const res = await saveIntents(current, key);
       if (res.demo) {
         toast.success("Looks good! Sign in to save it for real.");
         reset();
@@ -133,8 +176,10 @@ export function AiLogBox({
         setItems(current.filter((_, i) => failed.has(i)));
         return;
       }
-      if (!res.saved) toast.error(res.error ?? "Nothing was saved.");
-      else reset();
+      // No failures: a real save (saved > 0) or a benign de-duped no-op both just
+      // clear the box. Only a shape/empty error (ok:false) shows a toast.
+      if (!res.ok) toast.error(res.error ?? "Nothing was saved.");
+      reset();
     });
   };
 
@@ -182,12 +227,12 @@ export function AiLogBox({
           }}
           rows={3}
           maxLength={500}
-          disabled={parsing || saving}
+          disabled={parsing || saving || recording}
           placeholder={`ran 5k this morning, spent ${symbol}400 on lunch, feeling good 4/5`}
           className={cn(inputCls, "resize-none py-3 leading-relaxed")}
         />
 
-        {!items && (
+        {!items && !recording && !transcribing && (
           <div className="flex flex-wrap gap-1.5">
             {examples.map((ex) => (
               <button
@@ -202,21 +247,93 @@ export function AiLogBox({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={parse}
-          disabled={!sentence.trim() || parsing || saving}
-          style={{ backgroundImage: "linear-gradient(90deg, var(--accent-purple), var(--accent-cyan))" }}
-          className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-        >
-          {parsing ? (
-            "Reading…"
+        {/* ---- Voice recorder / parse row ---- */}
+        <AnimatePresence mode="wait" initial={false}>
+          {recording || transcribing ? (
+            <motion.div
+              key="recorder"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+              className="rounded-xl border border-accent-purple/40 bg-card-hover/50 p-3"
+            >
+              {transcribing ? (
+                <div className="flex items-center justify-center gap-2 py-2 text-sm font-medium text-fg-secondary">
+                  <Icon name="Sparkles" size={16} className="animate-pulse" style={{ color: "var(--accent-purple)" }} />
+                  Transcribing…
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="relative grid size-2.5 shrink-0 place-items-center">
+                      <span className="absolute inline-flex size-2.5 animate-ping rounded-full bg-accent-rose/70" />
+                      <span className="inline-flex size-2.5 rounded-full bg-accent-rose" />
+                    </span>
+                    <Waveform analyser={analyser} className="h-8 flex-1" />
+                    <span className="shrink-0 font-mono text-xs tabular-nums text-fg-secondary">
+                      {fmtTime(elapsed)} / {fmtTime(MAX_RECORDING_SECONDS)}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={stop}
+                      style={{ backgroundImage: "linear-gradient(90deg, var(--accent-purple), var(--accent-cyan))" }}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity"
+                    >
+                      <Icon name="Square" size={14} /> Stop &amp; transcribe
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancel}
+                      className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
           ) : (
-            <>
-              <Icon name="Sparkles" size={16} /> Log it
-            </>
+            <motion.div
+              key="parse"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex gap-2"
+            >
+              {micAvailable && (
+                <button
+                  type="button"
+                  onClick={onMic}
+                  disabled={parsing || saving}
+                  aria-label="Record voice input"
+                  title="Speak instead of typing"
+                  className="grid size-[46px] shrink-0 place-items-center rounded-xl border border-border text-fg-secondary transition-colors hover:border-border-strong hover:text-fg disabled:opacity-60"
+                >
+                  <Icon name="Mic" size={18} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={parse}
+                disabled={!sentence.trim() || parsing || saving}
+                style={{ backgroundImage: "linear-gradient(90deg, var(--accent-purple), var(--accent-cyan))" }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
+              >
+                {parsing ? (
+                  "Reading…"
+                ) : (
+                  <>
+                    <Icon name="Sparkles" size={16} /> Log it
+                  </>
+                )}
+              </button>
+            </motion.div>
           )}
-        </button>
+        </AnimatePresence>
 
         {/* ---- Review ---- */}
         <AnimatePresence initial={false}>

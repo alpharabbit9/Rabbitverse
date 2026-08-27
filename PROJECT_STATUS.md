@@ -11,7 +11,7 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-08-26_
+_Last updated: 2026-08-28_
 
 > **V2 has begun.** V1 is finished; V2.0 ("Tell Rabbit what you did; Rabbit tells you when
 > you're off-track") is a two-pillar build in **7 phases** — full spec in the plan file
@@ -44,12 +44,16 @@ a workout logged "yesterday" was written to today, a review chip's headline went
 numeric progress on a checklist project moved the ring and then snapped back, and the Settings target
 toggle restored the minimum instead of the default. eslint is now clean too. See the top session-log entry.
 
-**Next milestone: V3.0** — multi-user, a user-chosen mascot, and voice input. Planned in full in
-**`updatePlan.md`** (repo root); **Phases A (correctness) and B (multi-user foundation) are
-shipped** — the app now takes self-serve signups and gives every user their own timezone and
-currency. **Phase C (mascot system) is next.** Still outstanding: the **signed-in live pass** (now
-including two-account RLS isolation and signup atomicity), the reminders Edge Function + cron
-deploy, and Higgsfield mascot art.
+**Next milestone: V3.0** — multi-user, a user-chosen mascot, voice input, guardrails, and editable
+logs. Planned in full in **`updatePlan.md`** (repo root); **Phases A–F are shipped** — the app takes
+self-serve signups, gives every user their own timezone and currency, lets them pick which of **six
+creatures** shows up, transcribes voice into the AI box, protects the shared Groq key with per-user
+rate limits + a circuit breaker + save-idempotency (**Redis, fail-open**), and now lets you **edit or
+delete** any expense, reflection, project update, or whole project. **Phase G (depth, performance,
+resilience, user-owned config) is next.** Still outstanding: the **signed-in live pass** (now also
+covering edit/delete round-trips, two-account RLS isolation, signup atomicity, the mascot picker and
+voice on-device), Upstash key provisioning, the reminders Edge Function + cron deploy, and Higgsfield
+mascot art.
 
 Legend: ✅ done · 🟡 partial / UI-only (no real data) · ⬜ not started
 
@@ -139,6 +143,34 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
   everywhere the user is shown one (see the session log — this fixed cards that contradicted the new banners);
   sample projects given finish dates so demo exercises the warnings. **V2.0 complete.**
 
+### V3.0 — "Many Rabbits" (A–G)
+> Plan: [`updatePlan.md`](updatePlan.md) (repo root). A/B/C/D shipped; E–G still open.
+- ✅ **A — Correctness fixes**: `lib/health.ts` BMI bands, workout caption from `targets.weeklyWorkouts`,
+  dated weight/commit/progress logging, `hasData`-gated trend copy, 30-day average mood.
+- ✅ **B — Multi-user foundation**: migration `0004_multi_user.sql` (`public.users` roster +
+  `profiles`→`user_profiles` + a transactional `handle_new_user()`), email/password signup and reset,
+  `ALLOWED_EMAIL` deleted in favour of `users.status`, `lib/session.ts` + per-user timezone & currency.
+- ✅ **C — Mascot system**: `components/mascot/` is a registry — `shell.tsx` owns the aura, the four
+  motion presets and the state→eye-colour map; six code-drawn species (Rabbit, Fox, Wolf, Owl, Cat,
+  Dragon) supply only the body; `MascotProvider` seeds the choice from `getSession()`; Settings gains
+  a six-tile picker saved by `saveMascot`.
+- ✅ **D — Voice input**: mic button beside "Log it" → record (live waveform + timer + 60 s cap) →
+  `transcribe` Server Action over Groq Whisper (`whisper-large-v3-turbo`) → the transcript lands in the
+  textarea, editable and never auto-parsed. Recorder logic in `lib/use-voice-recorder.ts`, bars in
+  `components/quick-add/waveform.tsx`. No key → button hidden; demo → "Sign in to use voice input."
+- ✅ **E — Redis guardrails**: `lib/redis.ts` (Upstash over REST, no-ops when unconfigured) now
+  wired into `ai-actions.ts` — per-user sliding-window limits on `parseLog` (20/hr) and `transcribe`
+  (30/day), a global daily circuit breaker on the shared Groq key, and an idempotency key on
+  `saveIntents`. Every guardrail **fails open**, so behaviour is identical until Upstash keys are set.
+- ✅ **F — Edit & delete**: `updateExpense`/`deleteExpense`, `updateJournalEntry`/`deleteJournalEntry`,
+  `updateCommit`/`deleteCommit`/`renameProject`/`deleteProject` — all in the existing guard shape,
+  RLS-scoped by row id. A tap-first ⋯ `RowMenu` on the recent-expenses list, journal list and commit
+  timeline (Edit inline via the existing forms in an edit mode; Delete optimistic + **undoable**), plus
+  project rename/delete on the detail header. Editing an old row is allowed on purpose — no logging
+  window. Migration `0005_editable_logs.sql` is a documented safety-net (0001's `for all` RLS +
+  cascade FKs already covered it).
+- ⬜ **G — Depth, performance, resilience, user-owned config**
+
 ### Beyond V2.0 (design-for, not building)
 - ⬜ 2.1 — AI reflections & advice (weekly summary over aggregates + target statuses)
 - ⬜ 2.2 — Income & savings (new domain + savings-goal target + new parser intents)
@@ -156,9 +188,10 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 - **Pages:** All/overview `(app)/page.tsx`; `projects`, `workout`, `expenses`, `mental-health`,
   `settings`, `quick-add` — all under `src/app/(app)/`
 - **Dashboard pieces:** `components/dashboard/` — stat-card, section-card, panel, page-header,
-  activity-heatmap, today-timeline, rabbit-says, ai-insight
+  activity-heatmap, today-timeline, mascot-says, ai-insight
 - **Charts:** `components/charts/` — sparkline, trend-chart, radar-balance; `components/ui/` — ring, count-up
-- **Mascot:** `components/mascot/rabbit.tsx`
+- **Mascot:** `components/mascot/` — `types.ts` (states, species, copy, `resolveMascot`),
+  `shell.tsx` (aura, motion, eye colour), six species files, `registry.ts`, `provider.tsx`
 - **Logic libs:** `lib/` — dates (Dhaka-aware), types, nav, life-score, motivation, sample-data, utils
 - **Theming:** `components/theme-provider.tsx`, `theme-toggle.tsx`, `app/globals.css` tokens; `next-themes`
 - **PWA:** `app/manifest.ts` (no service worker / offline handling yet)
@@ -175,7 +208,143 @@ service worker, push subscription code.
 
 > Newest first. Each entry: date · what changed · what's next.
 
-### 2026-08-26 (latest) — V3.0 Phase B shipped: multi-user foundation
+### 2026-08-28 (latest) — V3.0 Phase E wired + Phase F shipped: guardrails & editable logs
+
+Two phases closed in one pass. First, a **check of A–E turned up one genuine gap**: Phase E's
+`lib/redis.ts` + tests existed (from the Phase D session) but were **never wired in** — `ai-actions.ts`
+didn't import them and `transcribe` still carried a `TODO(Phase E)`. So E was *finished*, not restarted.
+
+- **Phase E — guardrails now live in the code path.** `parseLog` gates on `parseLogLimit` (20/hr/user)
+  + `groqDailyBudget(1)`; `transcribe` on `transcribeLimit` (30/day/user) + `groqDailyBudget(3)` (audio
+  is the dear path — heavier circuit-breaker cost); `saveIntents(dispatches, idempotencyKey?)` claims a
+  one-shot key via `claimOnce`. The client (`ai-log-box.tsx`) mints a **fresh key per Save click**, so a
+  deliberate retry after a partial failure still goes through and only a duplicate dispatch of one click
+  is de-duped — a duplicate returns a clean no-op (the first call already wrote + revalidated). Every
+  guardrail **fails open** when Upstash is unconfigured, so this is safe to ship *before* the keys are
+  provisioned; local/demo behaviour is byte-identical to before.
+- **Phase F — everything you log is now editable and deletable.** New actions in the existing
+  `requireUser → validate → revalidatePath` shape, each scoped by RLS on the row id (the client sends
+  only the id + the change): `updateExpense`/`deleteExpense` (new `expenses/actions.ts`),
+  `updateJournalEntry`/`deleteJournalEntry`, and `updateCommit`/`deleteCommit`/`renameProject`/
+  `deleteProject`. `deleteProject` redirects to `/projects`; its updates + checklist cascade at the DB.
+- **UI: a tap-first ⋯ menu, inline edit, undoable delete.** `components/ui/row-menu.tsx` (Edit +
+  a second rose "Confirm delete" tap — no hover-only affordances, since this is a phone) and
+  `components/ui/use-undoable-delete.ts` (optimistic hide + a sonner **Undo** toast; the server delete
+  only fires once the Undo window lapses, so there's nothing to restore and no log-window to fight).
+  Wired into the recent-expenses list (`expenses/recent-expenses.tsx`), the journal list
+  (`mental-health/recent-journal.tsx`) and the commit timeline (`CommitTimeline` in `project-forms.tsx`).
+  Edit reuses the existing **`ExpenseForm`/`JournalForm`** in a new `mode="edit"`, and project
+  rename/delete sits in a `ProjectSettings` ⋯ on the detail header.
+- **Editing an old row is allowed on purpose** — new pure helper `lib/edit.ts::isEditableDate` gives edit
+  *no* lower date bound (only "not the future"), the opposite of the today/yesterday logging fence, with a
+  code comment so a later session doesn't "fix" it back. 8 tests.
+- **⚠️ Plan correction — the F migration is a documented no-op.** The plan called for *additive*
+  update/delete RLS policies. Verified against 0001: the policy is `for all using (auth.uid() = user_id)`
+  — one policy already covering UPDATE + DELETE — and `project_logs`/`project_tasks` already
+  `cascade on delete` from `projects`. So `0005_editable_logs.sql` adds nothing the app needs; it holds
+  the reserved number and **idempotently re-asserts** the owner policy + cascades so a fresh DB is
+  guaranteed editable.
+- **Verified:** `tsc --noEmit` clean · `eslint` **0 problems** · `next build` clean · `vitest` **110/110**
+  (+ `edit.test.ts`). In the demo server (:3100) `/mental-health`, `/projects/[id]` and `/expenses`
+  render with **zero console errors**, and the read-only lists (no ⋯ menus when signed out) are intact —
+  the extracted client components hydrate cleanly.
+- **Not verified (needs a signed-in pass, can't be done in demo):** the edit/delete round-trips
+  themselves — the ⋯ menus, inline edit forms, undoable delete and project rename/delete all render only
+  when `canLog`/live. This joins the standing signed-in pass. Also unchanged: Upstash key provisioning
+  (until then the guardrails no-op), and the reminders deploy.
+- **Next:** **Phase G** — expense history panel, a shared range toggle, `React.cache()` fan-out cuts,
+  `loading.tsx`/`error.tsx`/`not-found.tsx`, a categories editor, a workout-plan editor, and data export.
+
+### 2026-08-28 — V3.0 Phase D shipped: voice input
+
+You can now talk to the AI box instead of typing it.
+
+- **Mic beside "Log it".** `ai-log-box.tsx` gains a `voiceReady`-gated mic button (hidden when the Groq
+  key is absent). Tap it and the parse row swaps for a recording panel: a pulsing red dot, a live
+  waveform, and a `m:ss / 1:00` timer. Tap "Stop & transcribe" (or hit the 60 s cap, or "Cancel"). The
+  finished clip goes to Whisper and the text lands **in the textarea, editable, and never auto-parsed** —
+  the same review-before-commit rule the whole box follows. It **appends** to whatever's already typed,
+  so a half-written sentence isn't clobbered.
+- **The recorder is a hook, not inline.** `lib/use-voice-recorder.ts` owns the MediaRecorder +
+  AnalyserNode + timer + 60 s auto-stop and emits a Blob; `components/quick-add/waveform.tsx` paints the
+  bars off the analyser (theme-aware, reads `--accent-purple`/`--accent-cyan`). `supported` is read with
+  `useSyncExternalStore` (server snapshot `false`) so the button is client-only with no hydration
+  mismatch — and no setState-in-effect (eslint `react-hooks` is strict about both). Mic released on
+  unmount, stop, and cancel.
+- **`transcribe` Server Action** (`quick-add/ai-actions.ts`) → `groq.audio.transcriptions.create` with
+  `whisper-large-v3-turbo` (added beside `GROQ_MODEL` in `groq.ts`). Never throws: a blocked mic, a
+  missing key, an unreachable model, or a signed-out caller all come back as `{ ok:false, error }` → a
+  toast, not a crash. **No demo fallback** — Whisper can't be faked offline, so signed-out/unconfigured
+  gets a clear nudge. Server-side guards: live session, `isGroqConfigured()`, a non-empty clip, a 25 MB
+  cap; `audio/webm;codecs=opus` with an `audio/mp4` fallback for Safari, re-wrapped via `toFile` so Groq
+  reads the format from a real extension.
+- **Whisper chosen over the Web Speech API on purpose** — this app is an installed iOS PWA, where
+  `SpeechRecognition` is unreliable, and Whisper handles ৳/taka and mixed Bangla-English far better.
+- **Verified:** `tsc`, `eslint`, `next build` all clean; `vitest` 95/95 (added `audioFileName` mapping
+  tests). In the demo server the mic button renders beside "Log it" and clicking it nudges "Sign in to
+  use voice input." with zero console errors. **Still needs a signed-in/device pass** (the plan scopes it
+  that way): record on the installed iOS PWA and confirm the transcript lands editable and un-parsed —
+  the preview browser has no microphone.
+- **Rate-limiting is deferred to E, as designed.** `transcribe` carries a `TODO(Phase E)` where the
+  Upstash per-user daily limit + global circuit breaker will wrap the call before public signup — audio
+  is the costly path.
+- **Next:** **E — Redis guardrails** (`lib/redis.ts` no-op when unconfigured; rate limits on `parseLog`
+  + `transcribe`, a global Groq circuit breaker, idempotency on `saveIntents`). Must land before public
+  signup goes live.
+
+### 2026-08-26 — V3.0 Phase C shipped: the mascot system
+
+The rabbit is now one of six, and which one you get is yours to choose.
+
+- **Shell / species split.** `mascot/shell.tsx` owns everything that is not the animal — the glow
+  aura, the four motion presets, the charge streaks, the sleep drift, the victory shards and the
+  state→eye-colour map — and hands each body `{ state, eyeColor, sleeping, running, celebrating }`
+  through a render prop. A species file is now a `<defs>` and a handful of polygons on the same
+  120×120 grid, so all six move identically and only the drawing differs. A `Crest` wrapper carries
+  ears/horns/tufts, so every headpiece shakes on the same victory beat around the same pivot.
+- **Six creatures, code-drawn, no asset pipeline.** **Rabbit** (art unchanged, now rendered through
+  the shell), **Fox**, **Wolf**, **Owl**, **Cat**, **Dragon** — one angular warrior crest, six
+  palettes, all cut from the Rabbit's head/muzzle/collar geometry so they read as one family.
+- **`types.ts` holds no React on purpose.** `MascotState`, `MascotSpecies`, `MASCOT_NAMES`,
+  per-species `MASCOT_COPY` and `resolveMascot()` live there because `lib/session.ts` and the
+  `saveMascot` action validate a species string **on the server**, and dragging six client
+  components into those module graphs to do it would be silly. `registry.ts` is where species meet
+  drawings (`MASCOTS: Record<MascotSpecies, {name, Component, copy}>`) and re-exports `resolveMascot`,
+  so the plan's import path works either way.
+- **Wiring is by context, not props.** A layout cannot hand props to the page beneath it, and both
+  render sites sit several levels inside their pages — so `(app)/layout.tsx` seeds a `MascotProvider`
+  from `getSession()` (the rabbit in demo mode) and `page-header.tsx` / `mascot-says.tsx` call
+  `useMascot()`. Exactly the shape Phase B's `LocaleProvider` established.
+- **Renames** (mechanical, type-checked): `RabbitState`→`MascotState`, `rabbitStateFor`→`mascotStateFor`,
+  `rabbitSays`→`mascotSays`, and `RabbitSays`→**`MascotSays`** in `dashboard/mascot-says.tsx`, whose
+  heading now renders `{name} says` — "Dragon says" if that is what you picked. The `rabbitState`
+  prop/field is `mascotState` everywhere.
+- **Settings → Mascot.** Six tiles, each drawing its own creature live in the `walking` pose so the
+  choice is made on the animation rather than a still. Saves on tap through `saveMascot` (same
+  `requireUser` → validate → `revalidatePath` shape as `saveTargets`) and rolls the selection back if
+  the write fails. It revalidates *every* route under the (app) layout, because that is where the
+  provider is seeded. Demo mode shows a sign-in note and keeps the rabbit.
+- **Fixed on the way:** the sleeping "z" bubbles animated the **`cy` attribute**, and motion hands SVG
+  geometry attributes to the DOM verbatim — the first keyframe arrived `undefined`, so the browser
+  logged `<circle> attribute cy: Expected length, "undefined"` for every sleeping mascot on screen.
+  They now rise on `y` (a transform, which motion routes through `style.transform` for SVG children).
+  Identical motion, quiet console. The bug was pre-existing in `rabbit.tsx` and inherited by the shell.
+- **`logo-mark.png` untouched** — that is brand, not mascot. The layer is deliberately brand-agnostic
+  so the rebrand Rifat is working on drops straight in.
+- **Verified:** `tsc --noEmit` and `eslint` clean, 92 tests still pass. All six species were rasterized
+  at 4 states against both a dark and a light ground and eyeballed — the **Owl** was redrawn after
+  that pass (it read as a cat; it now has a heart-shaped facial disc, big ringed eyes and short blunt
+  tufts), the **Dragon's** horns were re-rooted onto the skull instead of floating above it, and the
+  **Cat's** ears were lowered and widened so its silhouette cannot be mistaken for the Rabbit's. The
+  three wired components (header, says-card, picker) were mounted in the real Next dev server and
+  render with no console errors.
+- **Not verified:** the Settings panel and the header *in situ* on a signed-in session. The picker is
+  signed-in-only, and a second dev server cannot run while the existing one holds `.next` — so this
+  joins the outstanding signed-in pass. Screenshots were unavailable in this session, hence the
+  offline rasterising.
+- **Next:** Phase D (voice input) — independent of everything shipped so far.
+
+### 2026-08-26 — V3.0 Phase B shipped: multi-user foundation
 
 Rabbit Verse is no longer single-user. Anyone can create an account, and every user brings their
 own timezone and currency. Data isolation already worked (0001's RLS is `auth.uid() = user_id` on

@@ -36,6 +36,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export function QuickAddHub({
   mode,
+  voiceReady,
   today,
   yesterday,
   categories,
@@ -43,6 +44,8 @@ export function QuickAddHub({
   actions,
 }: {
   mode: "demo" | "live";
+  /** Whether the Groq key is present, so the AI box can show the mic button. */
+  voiceReady: boolean;
   today: string;
   yesterday: string;
   categories: Cat[];
@@ -62,7 +65,7 @@ export function QuickAddHub({
         </p>
       </header>
 
-      <AiLogBox demo={demo} categories={categories} projects={projects} today={today} yesterday={yesterday} />
+      <AiLogBox demo={demo} voiceReady={voiceReady} categories={categories} projects={projects} today={today} yesterday={yesterday} />
 
       <div className="flex items-center gap-3">
         <span className="h-px flex-1 bg-border" />

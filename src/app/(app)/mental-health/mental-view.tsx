@@ -8,8 +8,7 @@ import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { JournalForm } from "./journal-form";
-
-const MOOD_FACE = ["", "😔", "😕", "😐", "🙂", "😄"];
+import { RecentJournal } from "./recent-journal";
 
 export function MentalView({
   journal,
@@ -68,22 +67,8 @@ export function MentalView({
             </div>
           )}
         </Panel>
-        <Panel title="Recent Journal">
-          {recent.length ? (
-            <ul className="space-y-3">
-              {recent.map((j) => (
-                <li key={j.id} className="rounded-xl border border-border p-3">
-                  <div className="mb-1 flex items-center justify-between text-xs text-fg-muted">
-                    <span>{shortDate(j.date)}</span>
-                    <span className="text-base">{MOOD_FACE[j.mood]}</span>
-                  </div>
-                  {j.body ? <p className="line-clamp-2 text-sm text-fg-secondary">{j.body}</p> : <p className="text-sm text-fg-muted">Mood {j.mood}/5</p>}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="py-6 text-center text-sm text-fg-muted">No entries yet.</p>
-          )}
+        <Panel title="Recent Journal" subtitle={canLog ? "Edit or delete any entry" : undefined}>
+          <RecentJournal entries={recent} today={today} yesterday={addDays(today, -1)} canLog={canLog} />
         </Panel>
       </div>
 

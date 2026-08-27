@@ -1,4 +1,5 @@
 import { addDays } from "@/lib/dates";
+import { isGroqConfigured } from "@/lib/ai/groq";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { categories as sampleCategories, projects as sampleProjects } from "@/lib/sample-data";
@@ -21,11 +22,13 @@ const actions: QuickAddActions = {
 export default async function QuickAddPage() {
   const today = await currentDay();
   const yesterday = addDays(today, -1);
+  const voiceReady = isGroqConfigured();
 
   if (!isSupabaseConfigured) {
     return (
       <QuickAddHub
         mode="demo"
+        voiceReady={voiceReady}
         today={today}
         yesterday={yesterday}
         categories={sampleCategories.map((c) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon }))}
@@ -44,6 +47,7 @@ export default async function QuickAddPage() {
   return (
     <QuickAddHub
       mode="live"
+      voiceReady={voiceReady}
       today={today}
       yesterday={yesterday}
       categories={categories ?? []}

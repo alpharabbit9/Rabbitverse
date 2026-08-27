@@ -112,11 +112,11 @@ but the six correctness fixes are small and shouldn't wait behind it.
 ```
 A. Correctness fixes        (small, ships first, low conflict)            ✅ shipped
 B. Multi-user foundation    (schema · accounts · per-user tz & currency)  ✅ shipped
-C. Mascot system            (independent — can run in parallel with B)    ← next
-D. Voice input              (independent — can run in parallel with B)
-E. Redis guardrails         (MUST land before public signup goes live)
-F. Edit & delete            (needs B's session helper)
-G. Depth, performance, resilience, user-owned config
+C. Mascot system            (independent — can run in parallel with B)    ✅ shipped
+D. Voice input              (independent — can run in parallel with B)    ✅ shipped
+E. Redis guardrails         (MUST land before public signup goes live)    ✅ shipped
+F. Edit & delete            (needs B's session helper)                    ✅ shipped
+G. Depth, performance, resilience, user-owned config                      ← next
 ```
 
 ---
@@ -218,7 +218,20 @@ things to get right:
 
 ---
 
-## C — Mascot system
+## C — Mascot system  ✅ shipped
+
+> **Two deviations, decided while building.**
+> 1. **`resolveMascot` lives in `types.ts`**, and `registry.ts` re-exports it. The server side
+>    (`lib/session.ts`, the `saveMascot` action) has to validate a species string, and importing
+>    `registry.ts` there would pull six client components into those module graphs to do it.
+>    Both import paths work, so nothing below changes.
+> 2. **The species travels by context, not by prop.** A layout cannot hand props to the page
+>    beneath it, and both render sites sit several levels inside their pages — so
+>    `(app)/layout.tsx` seeds a `MascotProvider` (`mascot/provider.tsx`) from `getSession()` and
+>    the two components call `useMascot()`. Same shape as Phase B's `LocaleProvider`.
+>
+> Also renamed `rabbitSays()` → `mascotSays()` alongside the three listed renames — leaving a
+> `rabbitSays()` feeding a `<MascotSays>` would have read as an oversight.
 
 `src/components/mascot/` becomes a registry:
 
@@ -248,7 +261,24 @@ layer is deliberately brand-agnostic so the rebrand Rifat is working on drops st
 
 ---
 
-## D — Voice input
+## D — Voice input  ✅ shipped
+
+> **Decisions taken while building.**
+> 1. **The recorder is a hook, not inline.** `src/lib/use-voice-recorder.ts` owns the MediaRecorder +
+>    AnalyserNode + timer + 60 s cap and emits a finished Blob; `src/components/quick-add/waveform.tsx`
+>    paints the live bars off the analyser. `ai-log-box.tsx` just wires them to `transcribe` — the box
+>    stays readable. `supported` is read via `useSyncExternalStore` (server snapshot `false`) so the
+>    button appears only client-side, with no hydration mismatch and no setState-in-effect.
+> 2. **The transcript appends, never replaces.** A partly-typed sentence isn't lost when you dictate the
+>    rest — the two concatenate. It still lands editable and un-parsed.
+> 3. **`voiceReady` is threaded page → hub → box as a prop.** The box is a client component and can't
+>    call `isGroqConfigured()`; the server page computes it once. No key → the mic button is hidden;
+>    demo (signed-out) → tapping it nudges "Sign in to use voice input."
+> 4. **Rate-limiting is deferred to E, as planned.** `transcribe` gates on a live session today, with a
+>    `TODO(Phase E)` where the Upstash per-user limit + global circuit breaker will wrap the call before
+>    public signup. Server-side it still enforces auth, a 25 MB cap, and a non-empty clip.
+> 5. **Whisper model** `whisper-large-v3-turbo` lives beside `GROQ_MODEL` in `groq.ts`; language is
+>    left unset so it autodetects mixed Bangla-English. Mic added to the icon registry (`Mic`, `Square`).
 
 - `ai-log-box.tsx` gains a mic button beside the parse button: tap to start, tap to stop, with a live
   waveform (Web Audio `AnalyserNode`), an elapsed timer and a 60-second cap.
@@ -264,7 +294,18 @@ layer is deliberately brand-agnostic so the rebrand Rifat is working on drops st
 
 ---
 
-## E — Redis guardrails
+## E — Redis guardrails  ✅ shipped
+
+> **Shipped in two passes.** `src/lib/redis.ts` + `redis.test.ts` were written a
+> session earlier but left **unwired** — `ai-actions.ts` never imported them and
+> `transcribe` still carried a `TODO(Phase E)`. This session wired the three call
+> sites: `parseLog` gates on `parseLogLimit` + `groqDailyBudget(1)`, `transcribe`
+> on `transcribeLimit` + `groqDailyBudget(3)` (audio is the dear path), and
+> `saveIntents(dispatches, idempotencyKey?)` claims a one-shot key via
+> `claimOnce`. The client mints a fresh key per Save *click*, so a deliberate
+> retry still works and only a duplicate dispatch of one click is de-duped.
+> Everything still fails open when Upstash is unset — local/demo behaviour is
+> unchanged — so this is safe to ship before the keys are provisioned.
 
 `src/lib/redis.ts` — an Upstash client that no-ops when unconfigured.
 
@@ -279,12 +320,39 @@ Redis entry is a cross-user data leak.
 
 ---
 
-## F — Edit & delete
+## F — Edit & delete  ✅ shipped
 
-`supabase/migrations/0005_editable_logs.sql` — additive `update`/`delete` RLS policies for
-`expenses`, `journal_entries`, `project_logs`. New actions in the existing guard shape:
-`updateExpense`/`deleteExpense` (new `expenses/actions.ts`), `deleteJournalEntry`,
-`updateCommit`/`deleteCommit`/`renameProject`/`deleteProject`.
+> **Three decisions taken while building.**
+> 1. **The migration is a documented safety-net, not a functional change.** The
+>    plan assumed 0001 needed *additive* update/delete policies. It doesn't:
+>    0001's policy is `for all using (auth.uid() = user_id)` — one policy that
+>    already covers SELECT + INSERT + UPDATE + DELETE — and `project_logs` /
+>    `project_tasks` already cascade `on delete` from `projects`. So
+>    `0005_editable_logs.sql` adds nothing the app needs; it holds the reserved
+>    number, and idempotently *re-asserts* the owner policy + cascades so a fresh
+>    database is guaranteed editable. RLS is what scopes every write — the client
+>    sends only a row id + the change.
+> 2. **`updateJournalEntry` was added** alongside the listed `deleteJournalEntry`.
+>    The plan's UI ("Edit / Delete on the journal list, editing via `JournalForm`")
+>    needs an update path, and reusing `saveJournal` would wrongly re-impose the
+>    today/yesterday window on an old entry. `updateJournalEntry` edits mood + body
+>    by id, no window.
+> 3. **Delete is optimistic-undo, and Edit is inline.** A shared
+>    `useUndoableDelete` hook hides the row and only fires the server delete after
+>    the Undo toast lapses — so Undo just cancels a timer, with nothing to restore
+>    and no window to fight. The ⋯ `RowMenu` is tap-first (no hover-only
+>    affordances — this is a phone), and Delete still asks for a second, rose
+>    confirm tap inside it. Project rename/delete live in a `ProjectSettings` ⋯ on
+>    the detail header; delete redirects to /projects (children cascade).
+>
+> New pure helper `src/lib/edit.ts::isEditableDate` (+ tests) encodes the rule:
+> editing has **no** lower date bound, only "not the future".
+
+`supabase/migrations/0005_editable_logs.sql` — the update/delete surface is already
+covered by 0001's `for all` RLS + the `on delete cascade` FKs, so this migration is an
+idempotent re-assertion of both rather than new policy. New actions in the existing guard
+shape: `updateExpense`/`deleteExpense` (new `expenses/actions.ts`),
+`updateJournalEntry`/`deleteJournalEntry`, `updateCommit`/`deleteCommit`/`renameProject`/`deleteProject`.
 
 **Editing an old row is allowed; creating one is not.** The today+yesterday window exists to stop
 retro-fabricating a streak — correcting a row you genuinely logged three weeks ago is the opposite,

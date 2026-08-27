@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { addDays } from "@/lib/dates";
 import { currentDay } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -271,4 +272,92 @@ export async function logProgress(_prev: LogResult, formData: FormData): Promise
 
   revalidateAll();
   return { ok: true, error: null };
+}
+
+// ---- Phase F: edit & delete -----------------------------------------------
+// The commit timeline shows `project_logs` rows that carry a note (written by
+// `addCommit`, always `progress_amount = 0`), so editing/deleting one never
+// touches a numeric project's `current_value`. Editing an old update is allowed
+// on purpose — no today/yesterday window. RLS scopes every write to its owner.
+
+/** Edit a dated update's text. `project_id` is only used to revalidate. */
+export async function updateCommit(_prev: LogResult, formData: FormData): Promise<LogResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const logId = (formData.get("log_id") as string) || "";
+  const projectId = (formData.get("project_id") as string) || "";
+  const note = ((formData.get("note") as string) || "").trim().slice(0, 2000);
+  if (!logId) return { ok: false, error: "Missing update." };
+  if (!note) return { ok: false, error: "An update can't be empty — delete it instead." };
+
+  const { error } = await supabase.from("project_logs").update({ note }).eq("id", logId);
+  if (error) return { ok: false, error: error.message };
+
+  if (projectId) revalidateProject(projectId);
+  else revalidateAll();
+  return { ok: true, error: null };
+}
+
+/** Remove a dated update (that day drops out of "days worked" + the heatmap). */
+export async function deleteCommit(_prev: LogResult, formData: FormData): Promise<LogResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const logId = (formData.get("log_id") as string) || "";
+  const projectId = (formData.get("project_id") as string) || "";
+  if (!logId) return { ok: false, error: "Missing update." };
+
+  const { error } = await supabase.from("project_logs").delete().eq("id", logId);
+  if (error) return { ok: false, error: error.message };
+
+  if (projectId) revalidateProject(projectId);
+  else revalidateAll();
+  return { ok: true, error: null };
+}
+
+/** Rename a project and edit its "why / vision" and aimed finish date. */
+export async function renameProject(_prev: LogResult, formData: FormData): Promise<LogResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const projectId = (formData.get("project_id") as string) || "";
+  const name = ((formData.get("name") as string) || "").trim();
+  if (!projectId) return { ok: false, error: "Missing project." };
+  if (!name) return { ok: false, error: "Give your project a name." };
+
+  const goals = ((formData.get("goals") as string) || "").trim().slice(0, 2000) || null;
+  const targetDateRaw = ((formData.get("target_date") as string) || "").trim();
+  // A blank clears the date; anything present must be a real yyyy-mm-dd.
+  const targetDate = targetDateRaw === "" ? null : /^\d{4}-\d{2}-\d{2}$/.test(targetDateRaw) ? targetDateRaw : undefined;
+  if (targetDate === undefined) return { ok: false, error: "That finish date isn't valid." };
+
+  const { error } = await supabase
+    .from("projects")
+    .update({ name: name.slice(0, 120), goals, target_date: targetDate })
+    .eq("id", projectId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateProject(projectId);
+  return { ok: true, error: null };
+}
+
+/**
+ * Delete a project and everything under it. `project_logs` and `project_tasks`
+ * cascade at the DB level (0001/0002 FKs), so one delete is enough. On success
+ * this redirects to /projects — the detail route it was deleted from is gone.
+ */
+export async function deleteProject(_prev: LogResult, formData: FormData): Promise<LogResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const projectId = (formData.get("project_id") as string) || "";
+  if (!projectId) return { ok: false, error: "Missing project." };
+
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/projects");
+  revalidatePath("/");
+  redirect("/projects");
 }

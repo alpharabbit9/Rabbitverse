@@ -125,3 +125,35 @@ finish these one-time steps:
 
 Test without waiting for the clock: temporarily set your reminder time to the
 next minute, or `curl` the function with the `x-cron-secret` header.
+
+## 7. Redis guardrails (V3.0 Phase E) — optional, but do it before public signup
+
+Rabbit Verse is multi-user, and every user shares **one** Groq API key. Nothing
+below is about data isolation — RLS already handles that. It stops one person
+from spoiling the shared key for everyone, and adds idempotency so a retried save
+can't double-write:
+
+- **per-user rate limits** — `parseLog` at 20/hour, `transcribe` at 30/day
+  (audio is the costly path);
+- a **global daily circuit breaker** on the key, so one user can't burn the whole
+  quota;
+- **idempotency** on `saveIntents`.
+
+It's backed by [Upstash Redis](https://console.upstash.com) over its REST API
+(HTTP — no serverless connection-pool problem — and a free tier). Everything in
+`src/lib/redis.ts` **degrades to a no-op when unconfigured** (and fails open on a
+Redis error), so the app runs identically with none of this set — the guardrails
+simply don't engage until you wire them.
+
+1. **Create a database** at <https://console.upstash.com> → **Create Database**
+   (Regional is fine; pick a region near your deployment).
+
+2. **Copy the REST credentials:** open the database → **REST API** and copy
+   `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` into `.env.local`
+   (and into your Vercel/host env). Optionally set `GROQ_DAILY_LIMIT` (defaults
+   to 5000 calls/UTC-day across all users).
+
+3. **That's it.** No migration, no code change to flip on — the guardrails detect
+   the env vars at runtime. Verify from Upstash's **Data Browser**: after a few
+   AI-box uses you'll see `rl:parse:*` / `rl:transcribe:*` counters, a
+   `cb:groq:<date>` circuit-breaker key, and `idem:*` claims appear and expire.

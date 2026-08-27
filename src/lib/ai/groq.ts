@@ -21,6 +21,15 @@ import Groq from "groq-sdk";
  */
 export const GROQ_MODEL = "openai/gpt-oss-120b";
 
+/**
+ * Speech-to-text model for the voice input (Phase D). Whisper (rather than the
+ * browser's Web Speech API) precisely because Rabbit Verse is used as an
+ * installed PWA on iOS, where `SpeechRecognition` is unreliable — and because
+ * Whisper handles ৳/taka and mixed Bangla-English far better. It autodetects the
+ * language, so no `language` hint is passed.
+ */
+export const GROQ_WHISPER_MODEL = "whisper-large-v3-turbo";
+
 let client: Groq | null = null;
 
 /** Lazily construct a singleton Groq client. Throws if the key is missing. */

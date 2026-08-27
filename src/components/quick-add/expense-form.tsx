@@ -8,6 +8,9 @@ import { useCurrencySymbol } from "@/components/locale-provider";
 type LogResult = { ok: boolean; error: string | null };
 type Cat = { id: string; name: string; color: string; icon: string };
 
+/** Prefill for edit mode — the row being corrected. */
+export type ExpenseInitial = { id: string; amount: number; categoryId: string; note?: string; spentAt: string };
+
 const INITIAL: LogResult = { ok: false, error: null };
 
 export function ExpenseForm({
@@ -15,27 +18,42 @@ export function ExpenseForm({
   today,
   yesterday,
   action,
+  mode = "create",
+  initial,
+  onDone,
 }: {
   categories: Cat[];
   today: string;
   yesterday: string;
   action: (prev: LogResult, fd: FormData) => Promise<LogResult>;
+  /** "create" is the logging form; "edit" corrects an existing row (Phase F). */
+  mode?: "create" | "edit";
+  initial?: ExpenseInitial;
+  /** Called after a successful edit, to close the inline editor. */
+  onDone?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL);
   const symbol = useCurrencySymbol();
   const ref = useRef<HTMLFormElement>(null);
+  const editing = mode === "edit";
 
   useEffect(() => {
     if (state.ok) {
-      toast.success("Expense logged ✓");
-      ref.current?.reset();
+      if (editing) {
+        toast.success("Expense updated ✓");
+        onDone?.();
+      } else {
+        toast.success("Expense logged ✓");
+        ref.current?.reset();
+      }
     } else if (state.error) {
       toast.error(state.error);
     }
-  }, [state]);
+  }, [state, editing, onDone]);
 
   return (
     <form ref={ref} action={formAction} className="space-y-4">
+      {editing && initial && <input type="hidden" name="id" value={initial.id} />}
       <div>
         <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Amount ({symbol})</label>
         <div className="relative">
@@ -47,6 +65,7 @@ export function ExpenseForm({
             min="1"
             step="1"
             required
+            defaultValue={initial?.amount}
             placeholder="450"
             className="w-full rounded-xl border border-border bg-card-hover/60 py-2.5 pl-7 pr-3 text-sm outline-none transition-colors focus:border-border-strong"
           />
@@ -58,7 +77,13 @@ export function ExpenseForm({
         <div className="grid grid-cols-3 gap-2">
           {categories.map((c, i) => (
             <label key={c.id} className="cursor-pointer">
-              <input type="radio" name="category_id" value={c.id} defaultChecked={i === 0} className="peer sr-only" />
+              <input
+                type="radio"
+                name="category_id"
+                value={c.id}
+                defaultChecked={initial ? c.id === initial.categoryId : i === 0}
+                className="peer sr-only"
+              />
               <span className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-2 py-2 text-xs transition-colors peer-checked:border-border-strong peer-checked:bg-card-hover">
                 <Icon name={c.icon} size={14} style={{ color: c.color }} />
                 {c.name}
@@ -74,9 +99,10 @@ export function ExpenseForm({
           <input
             name="spent_at"
             type="date"
-            min={yesterday}
+            // Logging is fenced to yesterday+today; editing may reach any past date.
+            min={editing ? undefined : yesterday}
             max={today}
-            defaultValue={today}
+            defaultValue={initial?.spentAt ?? today}
             className="w-full rounded-xl border border-border bg-card-hover/60 px-3 py-2.5 text-sm outline-none focus:border-border-strong"
           />
         </div>
@@ -86,20 +112,32 @@ export function ExpenseForm({
             name="note"
             type="text"
             maxLength={200}
+            defaultValue={initial?.note}
             placeholder="Lunch & coffee"
             className="w-full rounded-xl border border-border bg-card-hover/60 px-3 py-2.5 text-sm outline-none focus:border-border-strong"
           />
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-      >
-        <Icon name="Plus" size={16} />
-        {pending ? "Saving…" : "Log expense"}
-      </button>
+      <div className="flex gap-2">
+        {editing && (
+          <button
+            type="button"
+            onClick={() => onDone?.()}
+            className="rounded-xl border border-border px-4 py-3 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={pending}
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
+        >
+          <Icon name={editing ? "Check" : "Plus"} size={16} />
+          {pending ? "Saving…" : editing ? "Save changes" : "Log expense"}
+        </button>
+      </div>
     </form>
   );
 }

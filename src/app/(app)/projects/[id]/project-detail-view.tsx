@@ -9,7 +9,7 @@ import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { Ring } from "@/components/ui/ring";
 import { Icon } from "@/components/icon";
-import { CommitComposer, TaskAdder, TaskRow } from "../project-forms";
+import { CommitComposer, CommitTimeline, ProjectSettings, TaskAdder, TaskRow } from "../project-forms";
 
 const DAY_MS = 86_400_000;
 
@@ -63,6 +63,8 @@ export function ProjectDetailView({
         <Icon name="ChevronLeft" size={16} />
         All projects
       </Link>
+
+      {canLog && <ProjectSettings project={project} />}
 
       {status && status.level !== "ok" && <TargetWarning status={status} />}
 
@@ -143,28 +145,7 @@ export function ProjectDetailView({
             <CommitComposer projectId={project.id} today={today} yesterday={addDays(today, -1)} />
           </div>
         )}
-        {commits.length > 0 ? (
-          <ol className="space-y-3">
-            {commits.map((c) => (
-              <li key={c.id} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <span className="mt-1 grid size-6 shrink-0 place-items-center rounded-full bg-card-hover">
-                    <Icon name="PenLine" size={12} style={{ color: "var(--accent-blue)" }} />
-                  </span>
-                  <span className="mt-1 w-px flex-1 bg-border" />
-                </div>
-                <div className="min-w-0 flex-1 pb-1">
-                  <div className="text-xs font-medium text-fg-muted">{shortDate(c.date)}</div>
-                  <p className="mt-0.5 whitespace-pre-line text-sm text-fg">{c.note}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="text-sm text-fg-muted">
-            {canLog ? "No updates yet — log your first one above. Each update counts as a day worked." : "No updates logged yet."}
-          </p>
-        )}
+        <CommitTimeline commits={commits} projectId={project.id} canLog={canLog} />
       </Panel>
 
       <Panel title="Project Activity" subtitle="Days you moved this project forward">
