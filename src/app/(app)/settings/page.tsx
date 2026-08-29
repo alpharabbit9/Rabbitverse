@@ -16,6 +16,10 @@ import { currencySymbol } from "@/lib/money";
 import { currentDay, getLocaleContext, getSession } from "@/lib/session";
 import { LocaleCard } from "@/components/settings/locale-card";
 import { MascotCard } from "@/components/settings/mascot-card";
+import { CategoriesCard } from "@/components/settings/categories-card";
+import { ExportCard } from "@/components/settings/export-card";
+import { getCategories } from "@/lib/data/expenses";
+import { categories as sampleCategories } from "@/lib/sample-data";
 import { DEFAULT_MASCOT, MASCOT_NAMES } from "@/components/mascot/types";
 
 /** Read the saved reminder time (user-local "HH:MM") from user_profiles.settings. */
@@ -43,6 +47,7 @@ export default async function SettingsPage() {
   const targets = isSupabaseConfigured ? await getTargets() : DEFAULT_TARGETS;
   const { tz, currency } = await getLocaleContext();
   const mascot = (await getSession())?.mascot ?? DEFAULT_MASCOT;
+  const categories = isSupabaseConfigured ? await getCategories() : sampleCategories;
 
   return (
     <div className="space-y-6">
@@ -80,6 +85,24 @@ export default async function SettingsPage() {
               <Row label="Currency" value={`${currencySymbol(currency)} ${currency}`} />
               <Row label="Timezone" value={describeTimeZone(tz)} />
               <p className="pt-3 text-xs text-fg-muted">Sign in to set your own timezone and currency.</p>
+            </>
+          )}
+        </Panel>
+
+        <Panel title="Categories" subtitle="What you file spending under">
+          {isSupabaseConfigured ? (
+            <CategoriesCard categories={categories} />
+          ) : (
+            <>
+              <ul className="space-y-1.5">
+                {categories.map((c) => (
+                  <li key={c.id} className="flex items-center gap-2.5 rounded-xl border border-border px-3 py-2 text-sm">
+                    <Icon name={c.icon} size={16} style={{ color: c.color }} />
+                    <span className="font-medium">{c.name}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="pt-3 text-xs text-fg-muted">Sign in to add, rename and recolour your own categories.</p>
             </>
           )}
         </Panel>
@@ -138,6 +161,7 @@ export default async function SettingsPage() {
                   <div className="text-xs text-fg-muted">Your data syncs privately across devices.</div>
                 </div>
               </div>
+              <ExportCard />
               <form action={signOut}>
                 <button type="submit" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg">
                   Sign out

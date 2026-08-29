@@ -43,5 +43,15 @@ export default async function ExpensesPage() {
     </div>
   );
 
-  return <ExpensesView categories={categories} expenses={expenses} activity={activity} today={today} statuses={statuses} logSlot={logSlot} />;
+  return (
+    <ExpensesView
+      categories={categories}
+      expenses={expenses}
+      activity={activity}
+      today={today}
+      statuses={statuses}
+      logSlot={logSlot}
+      canFetch
+    />
+  );
 }

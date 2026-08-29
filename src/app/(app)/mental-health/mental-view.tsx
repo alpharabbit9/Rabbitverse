@@ -9,6 +9,8 @@ import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { JournalForm } from "./journal-form";
 import { RecentJournal } from "./recent-journal";
+import { RangeToggle, useRange } from "@/components/ui/range-toggle";
+import { sliceRange } from "@/lib/range";
 
 export function MentalView({
   journal,
@@ -23,8 +25,9 @@ export function MentalView({
   statuses?: TargetStatus[];
   canLog?: boolean;
 }) {
+  const [range, setRange] = useRange();
   const sorted = [...journal].sort((a, b) => (a.date < b.date ? -1 : 1));
-  const moodTrend = sorted.map((j) => ({ label: shortDate(j.date), value: j.mood }));
+  const moodTrend = sliceRange(sorted, today, range).map((j) => ({ label: shortDate(j.date), value: j.mood }));
   const recent = [...sorted].reverse().slice(0, 6);
 
   // Averaged over the last 30 days, not all time. The fetch reaches back a full
@@ -58,7 +61,7 @@ export function MentalView({
       </Panel>
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
-        <Panel title="Mood Trend" className="lg:col-span-2" subtitle="Your mood over time">
+        <Panel title="Mood Trend" className="lg:col-span-2" subtitle="Your mood over time" action={<RangeToggle value={range} onChange={setRange} />}>
           {moodTrend.length ? (
             <TrendChart data={moodTrend} color="var(--accent-orange)" height={220} domain={[1, 5]} />
           ) : (

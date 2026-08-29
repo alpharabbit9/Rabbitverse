@@ -13,7 +13,7 @@ export async function getProjectsData(today: string): Promise<{
   const [{ data: projRows }, { data: logs }, { data: taskRows }] = await Promise.all([
     supabase.from("projects").select("*").order("status").order("created_at"),
     supabase.from("project_logs").select("project_id,log_date").gte("log_date", start),
-    supabase.from("project_tasks").select("id,project_id,title,done").order("position"),
+    supabase.from("project_tasks").select("id,project_id,title,done,detail,source").order("position"),
   ]);
 
   const projects = shapeProjects(projRows);
@@ -23,7 +23,13 @@ export async function getProjectsData(today: string): Promise<{
   for (const t of taskRows ?? []) {
     const pid = String(t.project_id);
     const list = tasksByProject.get(pid) ?? [];
-    list.push({ id: String(t.id), title: String(t.title), done: Boolean(t.done) });
+    list.push({
+      id: String(t.id),
+      title: String(t.title),
+      done: Boolean(t.done),
+      detail: t.detail ? String(t.detail) : undefined,
+      source: t.source === "ai" ? "ai" as const : "manual" as const,
+    });
     tasksByProject.set(pid, list);
   }
   const daysByProject = new Map<string, Set<string>>();
@@ -52,7 +58,7 @@ export async function getProjectDetail(
   const start = addDays(today, -HEATMAP_DAYS);
   const [{ data: projRow }, { data: taskRows }, { data: logRows }] = await Promise.all([
     supabase.from("projects").select("*").eq("id", projectId).maybeSingle(),
-    supabase.from("project_tasks").select("id,project_id,title,done").eq("project_id", projectId).order("position"),
+    supabase.from("project_tasks").select("id,project_id,title,done,detail,source").eq("project_id", projectId).order("position"),
     supabase
       .from("project_logs")
       .select("id,log_date,note")

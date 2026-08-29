@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { addDays, startOfWeek } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { getLocaleContext } from "@/lib/session";
@@ -61,43 +62,38 @@ export interface OverviewData {
   statuses: TargetStatus[];
 }
 
-export async function getOverviewData(today: string): Promise<OverviewData> {
+interface SignalData {
+  expenses: Expense[];
+  projects: Project[];
+  workoutLogs: WorkoutLog[];
+  journal: JournalEntry[];
+  activity: DayActivity[];
+}
+
+/**
+ * The five core queries every signal-based computation needs. React.cache()
+ * deduplicates within a request: the layout calls getMoodState(today) and the
+ * overview page calls getOverviewData(today) — without this, every query ran
+ * twice (~14 Supabase calls per overview render → ~8).
+ */
+const getSignalRows = cache(async (today: string): Promise<SignalData> => {
   const supabase = await createClient();
   const start = addDays(today, -HEATMAP_DAYS);
 
-  const [
-    { data: expRows },
-    { data: projRows },
-    { data: projLogs },
-    { data: woRows },
-    { data: bmRows },
-    { data: jrnRows },
-    { data: prof },
-    { data: user },
-  ] = await Promise.all([
-    supabase.from("expenses").select("id,spent_at,amount,note,category_id").gte("spent_at", start).order("spent_at"),
-    supabase.from("projects").select("*").order("status").order("created_at"),
-    supabase.from("project_logs").select("log_date").gte("log_date", start),
-    supabase.from("workout_logs").select("log_date,done,plan_label,note").gte("log_date", start).order("log_date"),
-    supabase.from("body_metrics").select("log_date,weight_kg,body_fat_pct").order("log_date"),
-    supabase.from("journal_entries").select("id,entry_date,mood,body").gte("entry_date", start).order("entry_date"),
-    supabase.from("user_profiles").select("display_name").maybeSingle(),
-    supabase.auth.getUser(),
-  ]);
-
-  // The weekly cap the money signal is scored against is the user's own target
-  // (Phase 4), falling back to WEEKLY_BUDGET when they've switched it off.
-  const targets = await getTargets();
-  const budget = targets.weeklyExpenseCap ?? WEEKLY_BUDGET;
-  const locale = await getLocaleContext();
+  const [{ data: expRows }, { data: projRows }, { data: projLogs }, { data: woRows }, { data: jrnRows }] =
+    await Promise.all([
+      supabase.from("expenses").select("id,spent_at,amount,note,category_id").gte("spent_at", start).order("spent_at"),
+      supabase.from("projects").select("*").order("status").order("created_at"),
+      supabase.from("project_logs").select("log_date").gte("log_date", start),
+      supabase.from("workout_logs").select("log_date,done,plan_label,note").gte("log_date", start).order("log_date"),
+      supabase.from("journal_entries").select("id,entry_date,mood,body").gte("entry_date", start).order("entry_date"),
+    ]);
 
   const expenses = shapeExpenses(expRows);
   const projects = shapeProjects(projRows);
   const workoutLogs = shapeWorkoutLogs(woRows);
-  const bodyMetrics = shapeBodyMetrics(bmRows);
   const journal = shapeJournal(jrnRows);
 
-  // combined activity across every section
   const byDate = new Map<string, Partial<SectionCounts>>();
   for (const e of expenses) bump(byDate, e.date, "expenses");
   for (const l of projLogs ?? []) bump(byDate, String(l.log_date), "projects");
@@ -105,17 +101,34 @@ export async function getOverviewData(today: string): Promise<OverviewData> {
   for (const j of journal) bump(byDate, j.date, "mental");
   const activity = buildActivity(start, today, byDate);
 
+  return { expenses, projects, workoutLogs, journal, activity };
+});
+
+export async function getOverviewData(today: string): Promise<OverviewData> {
+  const supabase = await createClient();
+
+  const [{ expenses, projects, workoutLogs, journal, activity }, { data: bmRows }, { data: prof }, { data: user }] =
+    await Promise.all([
+      getSignalRows(today),
+      supabase.from("body_metrics").select("log_date,weight_kg,body_fat_pct").order("log_date"),
+      supabase.from("user_profiles").select("display_name").maybeSingle(),
+      supabase.auth.getUser(),
+    ]);
+
+  const targets = await getTargets();
+  const budget = targets.weeklyExpenseCap ?? WEEKLY_BUDGET;
+  const locale = await getLocaleContext();
+
+  const bodyMetrics = shapeBodyMetrics(bmRows);
   const streakDays = computeStreak(activity, today);
   const base = { projects, workoutLogs, expenses, journal, activity, budget };
   const signals = computeSignals({ ...base, today, streakDays });
   const score = lifeScore(signals);
   const scoreMeta = scoreLabel(score);
-  // Targets are checked before the mood/mascot are chosen, so being off-track
-  // can hold both back (Phase 7).
   const statuses = computeTargetStatuses({ today, targets, expenses, workoutLogs, journal, projects, ...locale });
   const worst = worstLevel(statuses);
   const mood = moodState(signals, score, worst);
-  const lifeTrend = computeLifeTrend(base, today, 30);
+  const lifeTrend = computeLifeTrend(base, today, 365);
 
   const meta = user?.user?.user_metadata ?? {};
   const name =
@@ -125,8 +138,6 @@ export async function getOverviewData(today: string): Promise<OverviewData> {
     user?.user?.email?.split("@")[0] ||
     "Friend";
 
-  // The user's week (Mon-start) — the same window the weekly cap is judged on,
-  // so "Rabbit says" can't disagree with the warning banner.
   const weekStart = startOfWeek(today);
   const weekSpend = expenses.filter((e) => e.date >= weekStart && e.date <= today).reduce((a, e) => a + e.amount, 0);
   const deltaVsLastWeek = score - (lifeTrend[lifeTrend.length - 8]?.value ?? score);
@@ -164,35 +175,12 @@ export async function getOverviewData(today: string): Promise<OverviewData> {
 }
 
 /**
- * The week's Mood State on its own — the same signal blend getOverviewData uses,
- * but trimmed to what feeds moodState(). Rendered app-wide so the ambient aura
- * (<html data-mood>) reflects real signals on every page, not just the overview.
+ * The week's Mood State — same signal blend as getOverviewData, but trimmed to
+ * what feeds moodState(). Calls getSignalRows() which is React.cache()d, so on
+ * the overview route the data is already warm from getOverviewData.
  */
 export async function getMoodState(today: string): Promise<ReturnType<typeof moodState>> {
-  const supabase = await createClient();
-  const start = addDays(today, -HEATMAP_DAYS);
-
-  const [{ data: expRows }, { data: projRows }, { data: projLogs }, { data: woRows }, { data: jrnRows }] =
-    await Promise.all([
-      supabase.from("expenses").select("id,spent_at,amount,note,category_id").gte("spent_at", start).order("spent_at"),
-      supabase.from("projects").select("*").order("status").order("created_at"),
-      supabase.from("project_logs").select("log_date").gte("log_date", start),
-      supabase.from("workout_logs").select("log_date,done,plan_label,note").gte("log_date", start).order("log_date"),
-      supabase.from("journal_entries").select("id,entry_date,mood,body").gte("entry_date", start).order("entry_date"),
-    ]);
-
-  const expenses = shapeExpenses(expRows);
-  const projects = shapeProjects(projRows);
-  const workoutLogs = shapeWorkoutLogs(woRows);
-  const journal = shapeJournal(jrnRows);
-
-  const byDate = new Map<string, Partial<SectionCounts>>();
-  for (const e of expenses) bump(byDate, e.date, "expenses");
-  for (const l of projLogs ?? []) bump(byDate, String(l.log_date), "projects");
-  for (const w of workoutLogs) if (w.done) bump(byDate, w.date, "workout");
-  for (const j of journal) bump(byDate, j.date, "mental");
-  const activity = buildActivity(start, today, byDate);
-
+  const { expenses, projects, workoutLogs, journal, activity } = await getSignalRows(today);
   const streakDays = computeStreak(activity, today);
   const targets = await getTargets();
   const budget = targets.weeklyExpenseCap ?? WEEKLY_BUDGET;

@@ -1,6 +1,6 @@
 "use client";
 
-import { shortDate, startOfWeek, weekdayMon0 } from "@/lib/dates";
+import { WEEKDAYS, shortDate, startOfWeek, weekdayMon0 } from "@/lib/dates";
 import type { BodyMetric, DayActivity, WorkoutLog, WorkoutPlanDay } from "@/lib/types";
 import type { TargetStatus } from "@/lib/targets";
 import { bmiFrom } from "@/lib/health";
@@ -9,8 +9,9 @@ import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { HeightForm, TodayWorkoutForm, WeightForm } from "./workout-forms";
-
-const WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+import { PlanEditor } from "./plan-editor";
+import { RangeToggle, useRange } from "@/components/ui/range-toggle";
+import { sliceRange } from "@/lib/range";
 
 export function WorkoutView({
   workoutLogs,
@@ -35,9 +36,10 @@ export function WorkoutView({
   // workout target is judged on, so the header can't disagree with the banner.
   const weekStart = startOfWeek(today);
   const weekWorkouts = workoutLogs.filter((w) => w.done && w.date >= weekStart && w.date <= today).length;
+  const [range, setRange] = useRange();
   const latest = bodyMetrics[bodyMetrics.length - 1];
   const bmi = bmiFrom(latest?.weightKg, heightCm);
-  const weightTrend = bodyMetrics.map((m) => ({ label: shortDate(m.date), value: m.weightKg }));
+  const weightTrend = sliceRange(bodyMetrics, today, range).map((m) => ({ label: shortDate(m.date), value: m.weightKg }));
 
   // The week's verdict comes from the target engine itself rather than a second
   // hardcoded threshold — a local `>= 3` rule used to print "Consistency strong"
@@ -106,7 +108,7 @@ export function WorkoutView({
       </div>
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
-        <Panel title="Weight Trend" className="lg:col-span-2">
+        <Panel title="Weight Trend" className="lg:col-span-2" action={<RangeToggle value={range} onChange={setRange} />}>
           {weightTrend.length ? (
             <TrendChart data={weightTrend} color="var(--accent-purple)" height={220} suffix="kg" />
           ) : (
@@ -115,15 +117,19 @@ export function WorkoutView({
             </div>
           )}
         </Panel>
-        <Panel title="7-Day Plan">
-          <ul className="space-y-2">
-            {workoutPlan.map((d) => (
-              <li key={d.weekday} className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm">
-                <span className="font-medium">{WD[d.weekday]}</span>
-                <span className="text-fg-secondary">{d.label}</span>
-              </li>
-            ))}
-          </ul>
+        <Panel title="7-Day Plan" subtitle={canLog ? "Tap a day to rename it" : undefined}>
+          {canLog ? (
+            <PlanEditor plan={workoutPlan} todayWeekday={weekdayMon0(today)} />
+          ) : (
+            <ul className="space-y-2">
+              {workoutPlan.map((d) => (
+                <li key={d.weekday} className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm">
+                  <span className="font-medium">{WEEKDAYS[d.weekday]}</span>
+                  <span className="text-fg-secondary">{d.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       </div>
 

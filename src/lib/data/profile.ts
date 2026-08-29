@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { addDays } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -19,7 +20,7 @@ export interface ProfileSummary {
   xpToNext: number;
 }
 
-export async function getProfileSummary(today: string): Promise<ProfileSummary> {
+export const getProfileSummary = cache(async function getProfileSummary(today: string): Promise<ProfileSummary> {
   const supabase = await createClient();
   const start = addDays(today, -60);
 
@@ -57,4 +58,4 @@ export async function getProfileSummary(today: string): Promise<ProfileSummary> 
   const streakDays = computeStreak(activity, today);
   const prog = progressionFromActiveDays(activeDayCount(activity));
   return { name, email: user?.email ?? null, avatarUrl, level: prog.level, streakDays, xp: prog.xp, xpToNext: prog.xpToNext };
-}
+});

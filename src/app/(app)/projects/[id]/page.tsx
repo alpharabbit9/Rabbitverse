@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { isGroqConfigured } from "@/lib/ai/groq";
 import { getProjectDetail } from "@/lib/data/projects";
 import { projectTargetStatus } from "@/lib/targets";
 import { activity as sampleActivity, projects as sampleProjects, sampleProjectDetail } from "@/lib/sample-data";
@@ -35,6 +36,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       today={today}
       status={projectTargetStatus(detail.project, today)}
       canLog
+      aiReady={isGroqConfigured()}
     />
   );
 }

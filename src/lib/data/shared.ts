@@ -33,6 +33,7 @@ export function shapeCategories(rows: Record<string, unknown>[] | null): Expense
     name: String(c.name),
     color: String(c.color ?? "var(--accent-cyan)"),
     icon: String(c.icon ?? "Sparkles"),
+    isPreset: Boolean(c.is_preset),
   }));
 }
 
@@ -47,22 +48,34 @@ export function shapeExpenses(rows: Record<string, unknown>[] | null): Expense[]
 }
 
 export function shapeProjects(rows: Record<string, unknown>[] | null): Project[] {
-  return (rows ?? []).map((p) => ({
-    id: String(p.id),
-    name: String(p.name),
-    description: p.description ? String(p.description) : undefined,
-    goals: p.goals ? String(p.goals) : undefined,
-    targetValue: Number(p.target_value),
-    targetUnit: String(p.target_unit ?? "%"),
-    current: Number(p.current_value ?? 0),
-    status: p.status === "completed" ? "completed" : "ongoing",
-    startDate: String(p.start_date),
-    targetDate: p.target_date ? String(p.target_date) : undefined,
-  }));
+  return (rows ?? []).map((p) => {
+    const s = String(p.status ?? "ongoing");
+    const status: Project["status"] = s === "completed" ? "completed" : s === "planned" ? "planned" : "ongoing";
+    const rawTags = Array.isArray(p.tags) ? (p.tags as unknown[]).map(String) : [];
+    return {
+      id: String(p.id),
+      name: String(p.name),
+      description: p.description ? String(p.description) : undefined,
+      goals: p.goals ? String(p.goals) : undefined,
+      targetValue: Number(p.target_value),
+      targetUnit: String(p.target_unit ?? "%"),
+      current: Number(p.current_value ?? 0),
+      status,
+      startDate: String(p.start_date),
+      targetDate: p.target_date ? String(p.target_date) : undefined,
+      tags: rawTags.length ? rawTags : undefined,
+    };
+  });
 }
 
 export function shapeTasks(rows: Record<string, unknown>[] | null): ProjectTask[] {
-  return (rows ?? []).map((t) => ({ id: String(t.id), title: String(t.title), done: Boolean(t.done) }));
+  return (rows ?? []).map((t) => ({
+    id: String(t.id),
+    title: String(t.title),
+    done: Boolean(t.done),
+    detail: t.detail ? String(t.detail) : undefined,
+    source: t.source === "ai" ? "ai" as const : "manual" as const,
+  }));
 }
 
 export function shapeWorkoutLogs(rows: Record<string, unknown>[] | null): WorkoutLog[] {

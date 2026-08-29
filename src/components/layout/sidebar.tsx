@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, use } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import { NAV, SETTINGS_NAV, type NavItem } from "@/lib/nav";
 import { Icon } from "@/components/icon";
 import { ThemeOrb } from "@/components/theme-orb";
 import { ProfileAvatar } from "@/components/layout/profile-avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export interface ProfileChip {
@@ -42,10 +44,50 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-export function Sidebar({ profile }: { profile: ProfileChip }) {
+/*
+  The chip is the only part of the sidebar that needs data. It takes the
+  *promise* and unwraps it with `use()` inside a Suspense boundary, so the nav
+  itself paints on the first flush instead of waiting on the profile fan-out.
+*/
+function ProfileChipCard({ profile: promise }: { profile: Promise<ProfileChip> }) {
+  const profile = use(promise);
+  const xpPct = Math.round((profile.xp / Math.max(1, profile.xpToNext)) * 100);
+
+  return (
+    <>
+      <div className="glass flex items-center gap-3 rounded-2xl p-3">
+        <ProfileAvatar name={profile.name} avatarUrl={profile.avatarUrl} size={40} className="rounded-xl" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold">{profile.name}</div>
+          <div className="text-[11px] text-fg-muted">Level {profile.level} · Explorer</div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-card-hover">
+            <div className="h-full rounded-full bg-gradient-to-r from-accent-purple to-accent-blue" style={{ width: `${xpPct}%` }} />
+          </div>
+        </div>
+        <ThemeOrb size={34} className="self-center" />
+      </div>
+
+      <div className="glass flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+        <Icon name="Flame" size={16} style={{ color: "var(--accent-orange)" }} />
+        <span className="font-semibold">{profile.streakDays}</span>
+        <span className="text-xs text-fg-muted">day streak</span>
+      </div>
+    </>
+  );
+}
+
+function ProfileChipFallback() {
+  return (
+    <>
+      <Skeleton className="h-[68px] rounded-2xl" />
+      <Skeleton className="h-[38px] rounded-xl" />
+    </>
+  );
+}
+
+export function Sidebar({ profile }: { profile: Promise<ProfileChip> }) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
-  const xpPct = Math.round((profile.xp / Math.max(1, profile.xpToNext)) * 100);
 
   return (
     <aside className="glass-strong fixed inset-y-4 left-4 z-40 hidden w-64 flex-col overflow-hidden rounded-[28px] lg:flex">
@@ -67,23 +109,9 @@ export function Sidebar({ profile }: { profile: ProfileChip }) {
       </nav>
 
       <div className="space-y-3 p-3">
-        <div className="glass flex items-center gap-3 rounded-2xl p-3">
-          <ProfileAvatar name={profile.name} avatarUrl={profile.avatarUrl} size={40} className="rounded-xl" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">{profile.name}</div>
-            <div className="text-[11px] text-fg-muted">Level {profile.level} · Explorer</div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-card-hover">
-              <div className="h-full rounded-full bg-gradient-to-r from-accent-purple to-accent-blue" style={{ width: `${xpPct}%` }} />
-            </div>
-          </div>
-          <ThemeOrb size={34} className="self-center" />
-        </div>
-
-        <div className="glass flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
-          <Icon name="Flame" size={16} style={{ color: "var(--accent-orange)" }} />
-          <span className="font-semibold">{profile.streakDays}</span>
-          <span className="text-xs text-fg-muted">day streak</span>
-        </div>
+        <Suspense fallback={<ProfileChipFallback />}>
+          <ProfileChipCard profile={profile} />
+        </Suspense>
       </div>
     </aside>
   );

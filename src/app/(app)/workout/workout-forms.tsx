@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useOptimistic, useRef } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
 import { logWeight, saveHeight, setWorkoutDay, type LogResult } from "./actions";
@@ -15,6 +15,7 @@ export function TodayWorkoutForm({
   planLabel: string;
   status: "done" | "rest" | null;
 }) {
+  const [optimisticStatus, setOptimisticStatus] = useOptimistic(status);
   const [state, action, pending] = useActionState(setWorkoutDay, INITIAL);
   const formRef = useRef<HTMLFormElement>(null);
   const doneRef = useRef<HTMLInputElement>(null);
@@ -24,13 +25,19 @@ export function TodayWorkoutForm({
     else if (state.error) toast.error(state.error);
   }, [state]);
 
+  const handleAction = (formData: FormData) => {
+    const done = formData.get("done") === "true";
+    setOptimisticStatus(done ? "done" : "rest");
+    action(formData);
+  };
+
   const submit = (done: boolean) => {
     if (doneRef.current) doneRef.current.value = String(done);
     formRef.current?.requestSubmit();
   };
 
   return (
-    <form ref={formRef} action={action} className="space-y-2.5">
+    <form ref={formRef} action={handleAction} className="space-y-2.5">
       <input type="hidden" name="plan_label" value={planLabel} />
       <input ref={doneRef} type="hidden" name="done" value="true" />
       <div className="flex gap-2">
@@ -52,9 +59,9 @@ export function TodayWorkoutForm({
           Rest
         </button>
       </div>
-      {status && (
+      {optimisticStatus && (
         <p className="text-xs text-fg-muted">
-          {status === "done" ? (
+          {optimisticStatus === "done" ? (
             <span className="text-accent-mint">✓ Logged as done today.</span>
           ) : (
             <span>Marked as rest today.</span>

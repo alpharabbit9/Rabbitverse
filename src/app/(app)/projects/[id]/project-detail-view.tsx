@@ -9,7 +9,16 @@ import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { Ring } from "@/components/ui/ring";
 import { Icon } from "@/components/icon";
-import { CommitComposer, CommitTimeline, ProjectSettings, TaskAdder, TaskRow } from "../project-forms";
+import {
+  CommitComposer,
+  CommitTimeline,
+  MilestoneGenerator,
+  ProjectSettings,
+  StatusControl,
+  TagEditor,
+  TaskAdder,
+  TaskRow,
+} from "../project-forms";
 
 const DAY_MS = 86_400_000;
 
@@ -30,18 +39,23 @@ export function ProjectDetailView({
   today,
   status = null,
   canLog = false,
+  aiReady = false,
 }: {
   project: Project;
   activity: DayActivity[];
   today: string;
   status?: TargetStatus | null;
   canLog?: boolean;
+  aiReady?: boolean;
 }) {
   const pct = progressPct(project);
+  const isPlanned = project.status === "planned";
   const tasks = project.tasks ?? [];
   const commits = project.commits ?? [];
   const daysWorked = project.daysWorked ?? 0;
   const doneCount = tasks.filter((t) => t.done).length;
+  const openMilestoneCount = tasks.filter((t) => !t.done).length;
+  const hasIdea = !!(project.goals ?? "").trim();
 
   const daysElapsed = daysBetween(project.startDate, today) + 1;
   const daysLeft = project.targetDate ? daysBetween(today, project.targetDate) : null;
@@ -66,12 +80,20 @@ export function ProjectDetailView({
 
       {canLog && <ProjectSettings project={project} />}
 
+      {canLog && (
+        <div className="flex flex-wrap items-center gap-4">
+          <StatusControl project={project} />
+        </div>
+      )}
+
+      {canLog && <TagEditor project={project} />}
+
       {status && status.level !== "ok" && <TargetWarning status={status} />}
 
       {/* Header */}
       <div className="glass rounded-2xl p-5 sm:p-6">
         <div className="flex items-center gap-5">
-          <Ring value={pct} size={100} stroke={9} from="var(--accent-blue)" to="var(--accent-cyan)" id={project.id}>
+          <Ring value={pct} size={100} stroke={9} from={isPlanned ? "var(--fg-muted)" : "var(--accent-blue)"} to={isPlanned ? "var(--fg-muted)" : "var(--accent-cyan)"} id={project.id}>
             <span className="text-lg font-bold">{pct}%</span>
           </Ring>
           <div className="min-w-0 flex-1">
@@ -79,6 +101,11 @@ export function ProjectDetailView({
             {project.status === "completed" && (
               <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-card-hover px-2 py-0.5 text-xs font-medium" style={{ color: "var(--accent-mint)" }}>
                 <Icon name="CheckCircle2" size={13} /> Completed
+              </span>
+            )}
+            {isPlanned && (
+              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-card-hover px-2 py-0.5 text-xs font-medium text-fg-muted">
+                <Icon name="Clock" size={13} /> Planned
               </span>
             )}
             {project.goals ? (
@@ -136,13 +163,22 @@ export function ProjectDetailView({
           <p className="text-sm text-fg-muted">{canLog ? "No tasks yet — add the first one below." : "No tasks yet."}</p>
         )}
         {canLog && <TaskAdder projectId={project.id} />}
+        {canLog && (
+          <MilestoneGenerator projectId={project.id} hasIdea={hasIdea} aiReady={aiReady} />
+        )}
       </Panel>
 
       {/* Progress updates / commits */}
       <Panel title="Progress updates" subtitle={`${commits.length} update${commits.length === 1 ? "" : "s"} · ${daysWorked} day${daysWorked === 1 ? "" : "s"} worked`}>
         {canLog && (
           <div className="mb-4">
-            <CommitComposer projectId={project.id} today={today} yesterday={addDays(today, -1)} />
+            <CommitComposer
+              projectId={project.id}
+              today={today}
+              yesterday={addDays(today, -1)}
+              hasOpenMilestones={openMilestoneCount > 0}
+              aiReady={aiReady}
+            />
           </div>
         )}
         <CommitTimeline commits={commits} projectId={project.id} canLog={canLog} />

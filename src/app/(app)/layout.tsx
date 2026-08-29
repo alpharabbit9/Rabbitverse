@@ -12,6 +12,7 @@ import { DesktopTopbar } from "@/components/layout/desktop-topbar";
 import { MoodMode } from "@/components/mood-mode";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { currentDay, getLocaleContext, getSession } from "@/lib/session";
 import { LocaleProvider } from "@/components/locale-provider";
 import { MascotProvider } from "@/components/mascot/provider";
@@ -35,26 +36,29 @@ export default async function AppLayout({
   // Same trick for the creature: the two components that draw it sit deep
   // inside their pages, and demo mode always gets the rabbit.
   const mascot = session?.mascot ?? DEFAULT_MASCOT;
-  const [chip, mood]: [ProfileChip, Awaited<ReturnType<typeof getMoodState>>] =
-    isSupabaseConfigured
-      ? await Promise.all([getProfileSummary(today), getMoodState(today)])
-      : [
-          {
-            name: sampleProfile.name,
-            avatarUrl: null,
-            level: sampleProfile.level,
-            streakDays: sampleProfile.streakDays,
-            xp: sampleProfile.xp,
-            xpToNext: sampleProfile.xpToNext,
-          },
-          sampleMood,
-        ];
+  // Deliberately **not** awaited: the profile fan-out and the five mood-signal
+  // queries are handed down as promises and unwrapped under Suspense, so the
+  // shell — and the page inside it — start rendering immediately instead of
+  // waiting on ~9 queries that only decorate the frame.
+  const chip: Promise<ProfileChip> = isSupabaseConfigured
+    ? getProfileSummary(today)
+    : Promise.resolve({
+        name: sampleProfile.name,
+        avatarUrl: null,
+        level: sampleProfile.level,
+        streakDays: sampleProfile.streakDays,
+        xp: sampleProfile.xp,
+        xpToNext: sampleProfile.xpToNext,
+      });
+  const mood = isSupabaseConfigured ? getMoodState(today) : Promise.resolve(sampleMood);
 
   return (
     <LocaleProvider value={locale}>
       <MascotProvider species={mascot}>
         <div className="min-h-dvh">
-          <MoodMode mood={mood} />
+          <Suspense fallback={null}>
+            <MoodMode mood={mood} />
+          </Suspense>
           <ServiceWorkerRegister />
           <Sidebar profile={chip} />
           <div className="lg:pl-72">

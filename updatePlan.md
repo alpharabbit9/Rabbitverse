@@ -116,7 +116,8 @@ C. Mascot system            (independent — can run in parallel with B)    ✅ 
 D. Voice input              (independent — can run in parallel with B)    ✅ shipped
 E. Redis guardrails         (MUST land before public signup goes live)    ✅ shipped
 F. Edit & delete            (needs B's session helper)                    ✅ shipped
-G. Depth, performance, resilience, user-owned config                      ← next
+G. Depth, performance, resilience, user-owned config                      ✅ shipped
+H. AI Project Planner       (Projects section upgrade, independent of G)  ✅ shipped
 ```
 
 ---
@@ -365,7 +366,12 @@ modal — that matches the app's calm register. `sonner` toast with **Undo**.
 
 ---
 
-## G — Depth, performance, resilience, config
+## G — Depth, performance, resilience, config  ✅ shipped
+
+> **Shipped 2026-08-29.** Everything below is in, plus two extras the work turned up: the
+> app-shell Suspense split, and `Clock`/`Loader`/`ChevronLeft` added to the icon registry
+> (three icons the code already asked for were silently falling back to a sparkle).
+> `tsc` + `eslint` + `next build` clean, 150 tests pass.
 
 - **Expense history**: a `HistoryPanel` on `/expenses` — grouped by day, category filter, note
   search, month stepper, day totals — fed by `getExpenseHistory(month)` so it pages by month.
@@ -389,6 +395,32 @@ modal — that matches the app's calm register. `sonner` toast with **Undo**.
   already enforces one row per day).
 - **Export**: `src/app/api/export/route.ts` streaming every owned table as JSON, plus per-table CSV,
   with a Download button in Settings → Data. Closes the last open Phase 1.5 item.
+
+## H — AI Project Planner  ✅ shipped
+
+> **Shipped 2026-08-29.** Migration `0006_project_planner.sql` applied, all 127 tests pass.
+
+- **Three-state status lifecycle.** `planned | ongoing | completed` replaces the binary
+  `ongoing | completed`. `StatusControl` segmented control on the detail view. Planned projects
+  show a muted ring, "Not started" text, and produce no target warnings.
+- **Project tags.** `tags text[]` on `projects`, `TagEditor` on the detail view (13 presets,
+  max 10), `TagChips` display on cards. List view gains a client-side tag filter row.
+- **Grouped list view.** Projects grouped into "In progress", "Planned", "Completed" sections
+  with counts in the header.
+- **AI milestone generation.** `MilestoneGenerator` → Groq `openai/gpt-oss-120b` JSON mode →
+  editable suggestion chips → `applyMilestones` inserts as `project_tasks` with `source: 'ai'`.
+  Demo fallback splits idea by sentences.
+- **AI milestone matching.** `CommitMilestoneMatcher` in the commit composer → Groq match or
+  token-overlap demo → confirm chips → `completeMilestones`. Composer textarea now controlled.
+- **`recomputeProgress` adjusted.** `done === 0` leaves status untouched (Planned stays Planned).
+- **Pure AI layer** (`lib/ai/project-plan.ts`): milestone + match prompts, zod schemas, demo
+  fallbacks, `filterMatchIds`. 16 tests.
+- **Server actions** (`projects/ai-actions.ts`): `generateMilestones`, `applyMilestones`,
+  `scanUpdateForMilestones`, `completeMilestones`. Rate-limited, never-throws.
+- **Files:** `supabase/migrations/0006_project_planner.sql`, `src/lib/ai/project-plan.ts` (+test),
+  `src/app/(app)/projects/ai-actions.ts`, modified `types.ts`, `data/shared.ts`, `data/projects.ts`,
+  `projects/actions.ts`, `targets.ts`, `sample-data.ts`, `projects-view.tsx`, `project-forms.tsx`,
+  `project-detail-view.tsx`, `[id]/page.tsx`.
 
 ---
 

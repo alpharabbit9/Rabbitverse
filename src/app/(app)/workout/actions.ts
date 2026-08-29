@@ -95,3 +95,32 @@ export async function saveHeight(_prev: LogResult, formData: FormData): Promise<
   revalidateAll();
   return { ok: true, error: null };
 }
+
+/**
+ * Set one weekday of the training split — the labels the "Today's session" card
+ * and every logged row carry ("Push", "Legs", "Rest"). Upserts on
+ * `unique (user_id, weekday)`, so a day is written once and edited in place.
+ *
+ * Changing the plan does **not** rewrite history: `workout_logs.plan_label` is
+ * copied at log time on purpose, so a past Tuesday still says what you actually
+ * trained that day.
+ */
+export async function saveWorkoutPlanDay(_prev: LogResult, formData: FormData): Promise<LogResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const weekday = Number(formData.get("weekday"));
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) return { ok: false, error: "Which day?" };
+
+  const label = ((formData.get("label") as string) || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  if (!label) return { ok: false, error: "Give the day a name — 'Push', 'Rest', anything." };
+  const focus = ((formData.get("focus") as string) || "").replace(/\s+/g, " ").trim().slice(0, 80);
+
+  const { error } = await supabase
+    .from("workout_plan_days")
+    .upsert({ user_id: user.id, weekday, label, focus: focus || null }, { onConflict: "user_id,weekday" });
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAll();
+  return { ok: true, error: null };
+}

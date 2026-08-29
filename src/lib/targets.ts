@@ -183,7 +183,7 @@ function progressFraction(p: Project): number {
 
 /** Overdue / behind-pace for one ongoing project with an estimated finish date. */
 export function projectTargetStatus(p: Project, today: string): TargetStatus | null {
-  if (p.status === "completed" || !p.targetDate) return null;
+  if (p.status === "completed" || p.status === "planned" || !p.targetDate) return null;
   const pct = progressFraction(p);
   const donePct = Math.round(pct * 100);
   const base = { id: `project-${p.id}`, section: "projects" as const, progress: pct };

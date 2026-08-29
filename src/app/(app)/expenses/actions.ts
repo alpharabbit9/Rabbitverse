@@ -15,6 +15,8 @@ import { revalidatePath } from "next/cache";
 import { isEditableDate } from "@/lib/edit";
 import { currentDay } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { getExpenseHistory } from "@/lib/data/expenses";
+import type { Expense } from "@/lib/types";
 
 export type LogResult = { ok: boolean; error: string | null };
 
@@ -58,6 +60,12 @@ export async function updateExpense(_prev: LogResult, formData: FormData): Promi
 
   revalidateAll();
   return { ok: true, error: null };
+}
+
+/** Fetch all expenses for a given month (yyyy-mm). Used by the HistoryPanel. */
+export async function fetchMonthExpenses(month: string): Promise<Expense[]> {
+  if (!/^\d{4}-\d{2}$/.test(month)) return [];
+  return getExpenseHistory(month);
 }
 
 /** Permanently remove an expense. RLS keeps it to the owner's own rows. */

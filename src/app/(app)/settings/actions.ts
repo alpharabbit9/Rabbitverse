@@ -7,6 +7,14 @@ import { DEFAULT_TARGETS, TARGET_KEYS, type Targets, coerceTarget } from "@/lib/
 import { isValidLocale, isValidTimeZone } from "@/lib/locale";
 import { isValidCurrency } from "@/lib/money";
 import { MASCOT_SPECIES, type MascotSpecies } from "@/components/mascot/types";
+import {
+  DEFAULT_CATEGORY_COLOR,
+  DEFAULT_CATEGORY_ICON,
+  isCategoryColor,
+  isCategoryIcon,
+  isDuplicateName,
+  normalizeCategoryName,
+} from "@/lib/categories";
 
 export type ActionResult = { ok: boolean; error: string | null };
 
@@ -163,6 +171,110 @@ export async function saveMascot(species: unknown): Promise<ActionResult> {
   for (const path of ["/settings", "/", "/expenses", "/workout", "/projects", "/mental-health", "/quick-add"]) {
     revalidatePath(path);
   }
+  return { ok: true, error: null };
+}
+
+/*
+  ---- Spend categories -----------------------------------------------------
+
+  The categories a user logs against are theirs to shape: six are seeded on
+  signup (`is_preset`), and everything after that is their own. Name, colour and
+  icon are editable on all of them; only non-preset ones can be deleted, so the
+  AI parser and the six seeded buckets always have somewhere to land.
+
+  Every field is re-validated here against `lib/categories.ts` — the colour goes
+  into a `style` attribute and the icon into a component lookup, so neither may
+  be free text from the client.
+*/
+
+/** Paths whose category chips / breakdowns change when a category does. */
+const CATEGORY_PATHS = ["/settings", "/expenses", "/quick-add", "/"];
+
+function revalidateCategories() {
+  for (const path of CATEGORY_PATHS) revalidatePath(path);
+}
+
+/** Add one of the user's own categories. */
+export async function createCategory(input: { name: unknown; color: unknown; icon: unknown }): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const name = normalizeCategoryName(input?.name);
+  if (!name) return { ok: false, error: "Give the category a name." };
+  const color = isCategoryColor(input?.color) ? (input.color as string) : DEFAULT_CATEGORY_COLOR;
+  const icon = isCategoryIcon(input?.icon) ? input.icon : DEFAULT_CATEGORY_ICON;
+
+  const { data: existing } = await supabase.from("expense_categories").select("name");
+  if (isDuplicateName(name, (existing ?? []).map((c) => String(c.name)))) {
+    return { ok: false, error: `You already have a "${name}" category.` };
+  }
+
+  const { error } = await supabase
+    .from("expense_categories")
+    .insert({ user_id: user.id, name, color, icon, is_preset: false });
+  if (error) return { ok: false, error: error.message };
+
+  revalidateCategories();
+  return { ok: true, error: null };
+}
+
+/** Rename / recolour / re-icon a category (presets included). */
+export async function updateCategory(input: {
+  id: unknown;
+  name?: unknown;
+  color?: unknown;
+  icon?: unknown;
+}): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+  if (typeof input?.id !== "string" || !input.id) return { ok: false, error: "Which category?" };
+
+  const patch: Record<string, string> = {};
+  if (input.name !== undefined) {
+    const name = normalizeCategoryName(input.name);
+    if (!name) return { ok: false, error: "Give the category a name." };
+    const { data: existing } = await supabase.from("expense_categories").select("name").neq("id", input.id);
+    if (isDuplicateName(name, (existing ?? []).map((c) => String(c.name)))) {
+      return { ok: false, error: `You already have a "${name}" category.` };
+    }
+    patch.name = name;
+  }
+  if (input.color !== undefined) {
+    if (!isCategoryColor(input.color)) return { ok: false, error: "That isn't one of the colours." };
+    patch.color = input.color as string;
+  }
+  if (input.icon !== undefined) {
+    if (!isCategoryIcon(input.icon)) return { ok: false, error: "That isn't one of the icons." };
+    patch.icon = input.icon;
+  }
+  if (!Object.keys(patch).length) return { ok: true, error: null };
+
+  const { error } = await supabase.from("expense_categories").update(patch).eq("id", input.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateCategories();
+  return { ok: true, error: null };
+}
+
+/**
+ * Delete one of the user's own categories. The expenses filed under it are
+ * **kept** — `expenses.category_id` is `on delete set null`, so the amounts stay
+ * in every total and only lose their label. Presets are refused: they are the
+ * floor the AI parser and the seeded buckets rely on.
+ */
+export async function deleteCategory(id: unknown): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+  if (typeof id !== "string" || !id) return { ok: false, error: "Which category?" };
+
+  const { data: row } = await supabase.from("expense_categories").select("is_preset").eq("id", id).maybeSingle();
+  if (!row) return { ok: false, error: "That category is already gone." };
+  if (row.is_preset) return { ok: false, error: "The starter categories can be renamed, but not deleted." };
+
+  const { error } = await supabase.from("expense_categories").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateCategories();
   return { ok: true, error: null };
 }
 

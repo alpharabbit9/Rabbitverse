@@ -66,14 +66,15 @@ export const categories: ExpenseCategory[] = [
   pace, and p3/p6 have no date at all (which must produce no warning).
 */
 export const projects: Project[] = [
-  { id: "p1", name: "Rabbit Verse App", description: "Ship v1 of the life dashboard", targetValue: 100, targetUnit: "%", current: 60, status: "ongoing", startDate: addDays(TODAY, -40), targetDate: addDays(TODAY, -3) },
+  { id: "p1", name: "Rabbit Verse App", description: "Ship v1 of the life dashboard", targetValue: 100, targetUnit: "%", current: 60, status: "ongoing", startDate: addDays(TODAY, -40), targetDate: addDays(TODAY, -3), tags: ["Full-stack", "Web"] },
   { id: "p2", name: "Read 20 Books", description: "2026 reading goal", targetValue: 20, targetUnit: "books", current: 12, status: "ongoing", startDate: addDays(TODAY, -180), targetDate: addDays(TODAY, 185) },
   { id: "p3", name: "Learn Spanish", description: "Daily practice sessions", targetValue: 60, targetUnit: "sessions", current: 24, status: "ongoing", startDate: addDays(TODAY, -70) },
-  { id: "p4", name: "Portfolio Site", description: "Personal portfolio redesign", targetValue: 100, targetUnit: "%", current: 40, status: "ongoing", startDate: addDays(TODAY, -25), targetDate: addDays(TODAY, 5) },
+  { id: "p4", name: "Portfolio Site", description: "Personal portfolio redesign", targetValue: 100, targetUnit: "%", current: 40, status: "ongoing", startDate: addDays(TODAY, -25), targetDate: addDays(TODAY, 5), tags: ["Frontend", "Design"] },
   { id: "p5", name: "Write 30k Words", description: "Blog + essays", targetValue: 30000, targetUnit: "words", current: 24000, status: "ongoing", startDate: addDays(TODAY, -55), targetDate: addDays(TODAY, 35) },
   { id: "p6", name: "Save ৳50k", description: "Emergency fund", targetValue: 50000, targetUnit: "৳", current: 40000, status: "ongoing", startDate: addDays(TODAY, -90) },
   { id: "p7", name: "Portfolio Photoshoot", description: "Done and delivered", targetValue: 100, targetUnit: "%", current: 100, status: "completed", startDate: addDays(TODAY, -120) },
-  { id: "p8", name: "React Course", description: "Completed advanced React", targetValue: 100, targetUnit: "%", current: 100, status: "completed", startDate: addDays(TODAY, -150) },
+  { id: "p8", name: "React Course", description: "Completed advanced React", targetValue: 100, targetUnit: "%", current: 100, status: "completed", startDate: addDays(TODAY, -150), tags: ["Frontend"] },
+  { id: "p9", name: "ML Research Paper", description: "Exploring transformer architectures", targetValue: 100, targetUnit: "%", current: 0, status: "planned", startDate: addDays(TODAY, -2), tags: ["ML/AI", "Data"] },
 ];
 
 /**
@@ -81,12 +82,12 @@ export const projects: Project[] = [
  * so the preview detail page looks alive before Supabase is wired. In live mode
  * these come from `project_tasks` / `project_logs` instead.
  */
-const GENERIC_TASKS = [
-  "Define the scope & first milestone",
-  "Set up the essentials",
-  "Do the core work",
-  "Review & refine",
-  "Polish and wrap up",
+const GENERIC_TASKS: { title: string; detail?: string }[] = [
+  { title: "Define the scope & first milestone", detail: "Write down what done looks like and the first checkpoint." },
+  { title: "Set up the essentials", detail: "Tooling, repo, and project structure." },
+  { title: "Do the core work", detail: "Build the main feature end to end." },
+  { title: "Review & refine" },
+  { title: "Polish and wrap up", detail: "Fix edge cases and ship." },
 ];
 const GENERIC_COMMITS = [
   "Kicked things off and set the direction.",
@@ -102,7 +103,13 @@ export function sampleProjectDetail(p: Project): { tasks: ProjectTask[]; commits
   const pct = Math.min(100, (p.current / Math.max(1, p.targetValue)) * 100);
   const total = GENERIC_TASKS.length;
   const doneCount = Math.round((pct / 100) * total);
-  const tasks: ProjectTask[] = GENERIC_TASKS.map((title, i) => ({ id: `${p.id}-t${i}`, title, done: i < doneCount }));
+  const tasks: ProjectTask[] = GENERIC_TASKS.map((t, i) => ({
+    id: `${p.id}-t${i}`,
+    title: t.title,
+    done: i < doneCount,
+    detail: t.detail,
+    source: i < 3 ? "ai" as const : "manual" as const,
+  }));
 
   const span = Math.max(1, Math.round((parseDay(TODAY).getTime() - parseDay(p.startDate).getTime()) / 86_400_000));
   const n = Math.min(6, Math.max(2, Math.round(span / 12)));
@@ -273,11 +280,11 @@ export const score = lifeScore(signals);
 export const scoreMeta = scoreLabel(score);
 export const mood = moodState(signals, score);
 
-/** Life Score trend — last 30 days, gently rising to the current score. */
-export const lifeTrend = eachDay(addDays(TODAY, -29), TODAY).map((date, i) => {
+/** Life Score trend — last 365 days, gently rising to the current score. */
+export const lifeTrend = eachDay(addDays(TODAY, -364), TODAY).map((date, i) => {
   const r = mulberry32(seedFromIso(date) + 13);
-  const ramp = 68 + (i / 29) * (score - 68);
-  return { date, value: Math.round(Math.max(40, Math.min(100, ramp + (r() - 0.5) * 8))) };
+  const ramp = 55 + (i / 364) * (score - 55);
+  return { date, value: Math.round(Math.max(40, Math.min(100, ramp + (r() - 0.5) * 10))) };
 });
 
 /** Life Balance radar — you vs an ideal. */

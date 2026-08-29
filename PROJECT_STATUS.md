@@ -11,7 +11,7 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-08-28_
+_Last updated: 2026-08-29_
 
 > **V2 has begun.** V1 is finished; V2.0 ("Tell Rabbit what you did; Rabbit tells you when
 > you're off-track") is a two-pillar build in **7 phases** — full spec in the plan file
@@ -22,7 +22,13 @@ _Last updated: 2026-08-28_
 
 ## 1. Status at a glance
 
-**Phase: V2.0 shipped — both pillars live.** You can now **type one sentence** into the AI box on Quick-Add
+**Phase: V3.0 shipped — all eight phases (A–H) are in the code.** Anyone can hold an account, pick
+their creature, talk to the AI box, edit or delete anything they logged, plan a project with AI-drafted
+milestones, dig through their spending a month at a time, set their own categories and training split,
+and take every row with them as JSON or CSV. What is left is **infrastructure, not code**: a signed-in
+live pass, Upstash keys, the reminders deploy, and mascot art.
+
+**Before that (V2.0) — both pillars live.** You can **type one sentence** into the AI box on Quick-Add
 ("spent ৳450 on lunch, did legs, feeling good 4/5") and Rabbit parses it into reviewable chips that save
 through the existing section actions; and you can **set targets** in Settings (monthly/weekly ৳ caps, workouts
 and check-ins per week) that Rabbit checks continuously — warnings surface on each section, on the project
@@ -44,16 +50,15 @@ a workout logged "yesterday" was written to today, a review chip's headline went
 numeric progress on a checklist project moved the ring and then snapped back, and the Settings target
 toggle restored the minimum instead of the default. eslint is now clean too. See the top session-log entry.
 
-**Next milestone: V3.0** — multi-user, a user-chosen mascot, voice input, guardrails, and editable
-logs. Planned in full in **`updatePlan.md`** (repo root); **Phases A–F are shipped** — the app takes
-self-serve signups, gives every user their own timezone and currency, lets them pick which of **six
-creatures** shows up, transcribes voice into the AI box, protects the shared Groq key with per-user
-rate limits + a circuit breaker + save-idempotency (**Redis, fail-open**), and now lets you **edit or
-delete** any expense, reflection, project update, or whole project. **Phase G (depth, performance,
-resilience, user-owned config) is next.** Still outstanding: the **signed-in live pass** (now also
-covering edit/delete round-trips, two-account RLS isolation, signup atomicity, the mascot picker and
-voice on-device), Upstash key provisioning, the reminders Edge Function + cron deploy, and Higgsfield
-mascot art.
+**V3.0 is feature-complete — Phases A–H all shipped.** Multi-user accounts, a user-chosen mascot,
+voice input, Redis guardrails, editable logs, the AI Project Planner, and now **Phase G**: an expense
+history panel, a shared `7d/30d/90d/1y` range toggle, `React.cache()` fan-out cuts plus a streaming
+app shell, `loading`/`error`/`not-found` boundaries on every route, a categories editor, a workout
+plan editor and JSON/CSV data export. Planned in full in **`updatePlan.md`** (repo root).
+Still outstanding, none of it code: the **signed-in live pass** (edit/delete round-trips, two-account
+RLS isolation, signup atomicity, the mascot picker, voice on-device, and now the categories editor,
+the plan editor and the export download), Upstash key provisioning, the reminders Edge Function +
+cron deploy, and Higgsfield mascot art.
 
 Legend: ✅ done · 🟡 partial / UI-only (no real data) · ⬜ not started
 
@@ -117,7 +122,7 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 ### Phase 1.5 (after v1)
 - ⬜ Per-exercise logging (sets/reps/weight) + strength graphs
 - ⬜ Seasonal accent themes
-- ⬜ Data export (JSON/CSV)
+- ✅ Data export (JSON/CSV) — `/api/export`, Settings → Data (V3.0 Phase G)
 
 ### V2.0 — two pillars, 7 phases ✅ **complete**
 > Plan: `C:\Users\User\.claude\plans\if-v1-is-finished-whimsical-quail.md`. Pillar 1 = AI logging
@@ -143,8 +148,8 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
   everywhere the user is shown one (see the session log — this fixed cards that contradicted the new banners);
   sample projects given finish dates so demo exercises the warnings. **V2.0 complete.**
 
-### V3.0 — "Many Rabbits" (A–G)
-> Plan: [`updatePlan.md`](updatePlan.md) (repo root). A/B/C/D shipped; E–G still open.
+### V3.0 — "Many Rabbits" (A–H)
+> Plan: [`updatePlan.md`](updatePlan.md) (repo root). **All eight phases shipped.**
 - ✅ **A — Correctness fixes**: `lib/health.ts` BMI bands, workout caption from `targets.weeklyWorkouts`,
   dated weight/commit/progress logging, `hasData`-gated trend copy, 30-day average mood.
 - ✅ **B — Multi-user foundation**: migration `0004_multi_user.sql` (`public.users` roster +
@@ -169,7 +174,22 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
   project rename/delete on the detail header. Editing an old row is allowed on purpose — no logging
   window. Migration `0005_editable_logs.sql` is a documented safety-net (0001's `for all` RLS +
   cascade FKs already covered it).
-- ⬜ **G — Depth, performance, resilience, user-owned config**
+- ✅ **G — Depth, performance, resilience, user-owned config**: expense `HistoryPanel` (month
+  stepper + category filter + note search, grouped by day) over `getExpenseHistory(month)`; a shared
+  `7d/30d/90d/1y` `RangeToggle` (pure slicing in `lib/range.ts`, choice persisted in localStorage);
+  `React.cache()` on `getSignalRows`/`getProfileSummary`/`getCategories` (overview ~14 → ~8 queries)
+  plus a streaming app shell (profile + mood handed down as promises, unwrapped with `use()` under
+  `Suspense`); `loading.tsx` on every `(app)` route off a new `Skeleton` primitive, a mascot-branded
+  `error.tsx` and `not-found.tsx`; a Settings **categories editor** (server-validated icon/colour,
+  presets undeletable, deletes keep the spending); an in-place **workout plan editor** writing
+  `workout_plan_days`; and **data export** — `GET /api/export` streaming JSON per table, `?table=`
+  for CSV.
+- ✅ **H — AI Project Planner**: three-state lifecycle (Planned → Ongoing → Completed), project
+  tags + tag filtering on the list view, AI milestone generation from the project's idea text
+  (Groq `openai/gpt-oss-120b` in JSON mode, with demo fallback), AI milestone matching from daily
+  update text, editable suggestion chips with confirm-to-save, `StatusControl` + `TagEditor` +
+  `MilestoneGenerator` + `CommitMilestoneMatcher` components on the detail view.
+  Migration `0006_project_planner.sql`. 127 tests pass.
 
 ### Beyond V2.0 (design-for, not building)
 - ⬜ 2.1 — AI reflections & advice (weekly summary over aggregates + target statuses)
@@ -208,7 +228,115 @@ service worker, push subscription code.
 
 > Newest first. Each entry: date · what changed · what's next.
 
-### 2026-08-28 (latest) — V3.0 Phase E wired + Phase F shipped: guardrails & editable logs
+### 2026-08-29 (latest) — V3.0 Phase G shipped: depth, performance, resilience, user-owned config
+
+The last planned V3.0 phase. Nothing new to *learn* here — the sections you already use got deeper,
+faster and harder to break, and the last few constants became yours to set.
+
+- **Expense history.** A `HistoryPanel` on `/expenses`: month stepper, category filter, note search,
+  grouped by day with per-day totals (biggest spend first inside a day). The page already ships a
+  year of rows, so recent months need no fetch; stepping back past that calls `fetchMonthExpenses`
+  → `getExpenseHistory(month)` once per month and keeps the result. Grouping/filtering/month
+  arithmetic live in a new pure `lib/history.ts` (**19 tests**).
+- **Shared range toggle** (`7d · 30d · 90d · 1y`) on the Expenses, Weight, Mood and Life-Score
+  trends. Pure slicing in `lib/range.ts` (**11 tests**); `components/ui/range-toggle.tsx` is a
+  module store so every toggle on a page moves together and the choice persists in localStorage.
+  The Life-Score trend now computes a **full year** (was 30 days) so `1y` has something to show.
+- **`React.cache()` fan-out cuts.** New `getSignalRows(today)` holds the five signal queries both
+  `getMoodState` (layout) and `getOverviewData` (page) need — the overview drops from ~14 Supabase
+  queries to ~8. `getProfileSummary` and a new `getCategories()` are cached too (`getSession`,
+  `getLocaleContext` and `getTargets` already were).
+- **Streaming app shell.** `(app)/layout.tsx` no longer *awaits* the profile and mood reads: both
+  are handed down as promises and unwrapped with `use()` under `Suspense` — the mood aura with a
+  `null` fallback, the sidebar chip with a skeleton — so the nav, header and page start painting
+  without waiting on ~9 queries that only decorate the frame.
+- **Boundaries.** `loading.tsx` for every route under `(app)` (overview, expenses, workout,
+  mental-health, projects, project detail, quick-add, settings) built from a new `Skeleton`/
+  `PanelSkeleton`/`PageSkeleton` primitive that matches each page's card grid; `error.tsx` renders
+  **the user's own mascot** asleep, the digest, and an `unstable_retry()` button (Next 16's replacement
+  for `reset()`); `not-found.tsx` for a wrong URL.
+- **Categories editor** (Settings → Categories). Add / rename / recolour / re-icon, delete your own.
+  Presets can be restyled but not deleted, and deleting keeps the spending — `expenses.category_id`
+  is `on delete set null`, so the amounts stay in every total and only lose their label. Icon and
+  colour choices are re-validated server-side against `lib/categories.ts` (they land in a component
+  lookup and a `style` attribute, so neither may be free text). The AI parser picks new categories
+  up for free.
+- **Workout plan editor.** The 7-Day Plan panel is now editable in place when signed in — tap a day,
+  name the session and its focus, save. Upserts `workout_plan_days` on `unique (user_id, weekday)`;
+  past `workout_logs.plan_label` values are left alone on purpose, so history still says what you
+  actually trained.
+- **Data export** (Settings → Data). `GET /api/export` streams every owned table as JSON table by
+  table (no giant string in memory); `?table=expenses` returns one table as RFC-4180 CSV. Plain
+  `<a download>` links, no client JS. `push_subscriptions` is excluded — those are per-device push
+  credentials, not user data. Closes the last open Phase 1.5 item.
+- **Icons that were silently wrong.** `Clock`, `Loader` and `ChevronLeft` were being asked for by
+  name but missing from the registry, so all three rendered as a fallback sparkle. Added, along with
+  the category palette's icons.
+- **Two lint errors fixed in passing** (from the uncommitted Phase H work): the new-project form and
+  the commit composer both reset state inside an effect on the action result. Both now do it inside
+  the action itself, which also fixes a real bug — an identical second result would not have
+  re-fired the effect, so the form would not have reset.
+- **Verified:** `tsc --noEmit` clean · `eslint` **0 problems** · `next build` clean · `vitest`
+  **150/150** (+30 new). On the demo server (:3100) every route returns 200, the History panel's
+  month stepper / note search / category filter all work against real sample rows, the range toggle
+  switches the trend and the "By Category" window, and the Settings page renders the new Categories
+  panel. `/api/export` correctly refuses with 401 in demo mode.
+- **Not verified — the browser pane could not run it.** Effect-scheduled React state updates never
+  commit in the hidden preview pane (proved with a one-line probe: `useEffect(() => setState(1), [])`
+  stayed at `0`, while click-driven updates commit fine — `requestAnimationFrame` never fires there,
+  so `motion` animations and chart mounts stall too). That makes exactly one behaviour unverifiable
+  locally: the **saved range being re-applied on load** (the toggle reads localStorage after
+  hydration). It works by construction and by React's own store contract, but it needs a real browser
+  pass. Everything signed-in also joins the standing live pass: the categories editor, the plan
+  editor and the export download all render only when `canLog`/live.
+- **Next:** V3.0 is **feature-complete** — A–H all shipped. What's left is not code: the signed-in
+  live pass (now also covering categories, the plan editor and export), Upstash key provisioning,
+  the reminders Edge Function + cron deploy, and Higgsfield mascot art.
+
+### 2026-08-29 — V3.0 Phase H shipped: AI Project Planner
+
+The Projects section gained a full lifecycle and AI-powered milestone management.
+
+- **Three-state status lifecycle.** Projects are now `planned`, `ongoing`, or `completed` (was
+  binary ongoing/completed). A `StatusControl` segmented control on the detail view lets the user
+  switch between them. Planned projects show a muted ring and "Not started" text on the list, and
+  produce no overdue/behind-pace warnings.
+- **Project tags.** `tags text[]` column on `projects`, with a `TagEditor` on the detail view
+  (13 presets, max 10 per project) and a `TagChips` display. The list view gains a client-side
+  tag filter row — click a tag to show only matching projects.
+- **Grouped list view.** Projects are now grouped into "In progress", "Planned", and "Completed"
+  sections with counts in the header subtitle.
+- **AI milestone generation.** `MilestoneGenerator` reads the project's idea/goals text, sends it
+  to Groq (`openai/gpt-oss-120b`, JSON mode, zod-validated) and renders editable suggestion chips.
+  The user can edit titles, remove individual suggestions, and confirm to save — `applyMilestones`
+  inserts them as `project_tasks` with `source: 'ai'`. Demo fallback splits the idea into sentences.
+  Rate-limited via `parseLogLimit` + `groqDailyBudget`.
+- **AI milestone matching.** `CommitMilestoneMatcher` sits inside the commit composer. After
+  writing an update, "Check off milestones from this update" scans the text against open milestones
+  via Groq (or a token-overlap heuristic in demo), shows confirm chips with evidence text, and
+  `completeMilestones` marks the selected tasks done. The composer's textarea is now controlled so
+  the matcher can read the note.
+- **`recomputeProgress` status logic adjusted.** `done === total` → completed, `done > 0` → ongoing,
+  `done === 0` → leave status untouched (so adding milestones to a Planned project doesn't auto-
+  transition it to Ongoing).
+- **Migration `0006_project_planner.sql`:** adds `planned` to the status check constraint, `tags`
+  array column, and `detail`/`source` columns on `project_tasks`.
+- **Pure AI layer** (`lib/ai/project-plan.ts`): milestone prompt + zod schema + demo fallback,
+  match prompt + schema + token-overlap heuristic + `filterMatchIds` defence-in-depth. 16 tests.
+- **Server actions** (`projects/ai-actions.ts`): `generateMilestones`, `applyMilestones`,
+  `scanUpdateForMilestones`, `completeMilestones` — all in the never-throws `{ ok, error }` shape.
+- **Sample data updated:** p1/p4/p8 have tags, new p9 "ML Research Paper" with `status: "planned"`
+  and tags `["ML/AI", "Data"]`. `GENERIC_TASKS` carry `detail` and sample tasks have `source`.
+- **Verified:** `tsc --noEmit` clean · `eslint` exit 0 · `vitest` **127/127** · demo server (:3100)
+  projects list shows grouped sections with tag filter, planned project renders muted ring and
+  "Not started", tag filtering correctly hides non-matching projects and sections.
+- **Not verified (needs signed-in pass):** StatusControl, TagEditor, MilestoneGenerator and
+  CommitMilestoneMatcher only render when `canLog` is true (logged-in users). The detail view's
+  AI features, tag editing, and status switching need an authenticated session.
+- **Next:** Phase G — expense history, range toggles, `React.cache()` fan-out, loading/error/
+  not-found boundaries, categories editor, workout-plan editor, data export.
+
+### 2026-08-28 — V3.0 Phase E wired + Phase F shipped: guardrails & editable logs
 
 Two phases closed in one pass. First, a **check of A–E turned up one genuine gap**: Phase E's
 `lib/redis.ts` + tests existed (from the Phase D session) but were **never wired in** — `ai-actions.ts`

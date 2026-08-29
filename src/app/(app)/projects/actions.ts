@@ -46,20 +46,26 @@ function revalidateProject(projectId: string) {
  * current_value becomes the percent done (0–100) with a 100/% target, so the
  * ring and every downstream signal (life-score, goals view) read it correctly.
  * Projects without tasks keep their numeric target untouched.
+ *
+ * Status rules:
+ *   all done  → completed
+ *   some done → ongoing (work has started)
+ *   none done → leave untouched (a Planned project stays Planned after
+ *               milestones are generated)
  */
-async function recomputeProgress(
+export async function recomputeProgress(
   supabase: Awaited<ReturnType<typeof createClient>>,
   projectId: string,
 ): Promise<void> {
   const { data: tasks } = await supabase.from("project_tasks").select("done").eq("project_id", projectId);
   const total = tasks?.length ?? 0;
-  if (total === 0) return; // no checklist → leave numeric progress as-is
+  if (total === 0) return;
   const done = (tasks ?? []).filter((t) => t.done).length;
   const pct = Math.round((done / total) * 100);
-  await supabase
-    .from("projects")
-    .update({ current_value: pct, target_value: 100, target_unit: "%", status: done === total ? "completed" : "ongoing" })
-    .eq("id", projectId);
+  const status = done === total ? "completed" : done > 0 ? "ongoing" : undefined;
+  const update: Record<string, unknown> = { current_value: pct, target_value: 100, target_unit: "%" };
+  if (status) update.status = status;
+  await supabase.from("projects").update(update).eq("id", projectId);
 }
 
 /**
@@ -82,6 +88,14 @@ export async function createProject(_prev: LogResult, formData: FormData): Promi
   const targetDateRaw = ((formData.get("target_date") as string) || "").trim();
   const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(targetDateRaw) ? targetDateRaw : null;
 
+  const statusRaw = ((formData.get("status") as string) || "").trim();
+  const status = statusRaw === "planned" ? "planned" : "ongoing";
+
+  const tagsRaw = ((formData.get("tags") as string) || "").trim();
+  const tags = tagsRaw
+    ? tagsRaw.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 10)
+    : [];
+
   const { error } = await supabase.from("projects").insert({
     user_id: user.id,
     name: name.slice(0, 120),
@@ -90,9 +104,10 @@ export async function createProject(_prev: LogResult, formData: FormData): Promi
     target_value: targetValue,
     target_unit: targetUnit,
     current_value: 0,
-    status: "ongoing",
+    status,
     start_date: await currentDay(),
     target_date: targetDate,
+    tags,
   });
   if (error) return { ok: false, error: error.message };
 
@@ -313,6 +328,45 @@ export async function deleteCommit(_prev: LogResult, formData: FormData): Promis
 
   if (projectId) revalidateProject(projectId);
   else revalidateAll();
+  return { ok: true, error: null };
+}
+
+const VALID_STATUSES = new Set(["planned", "ongoing", "completed"]);
+
+/** Set a project's status (Planned / Ongoing / Completed). */
+export async function setProjectStatus(_prev: LogResult, formData: FormData): Promise<LogResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const projectId = (formData.get("project_id") as string) || "";
+  const status = (formData.get("status") as string) || "";
+  if (!projectId) return { ok: false, error: "Missing project." };
+  if (!VALID_STATUSES.has(status)) return { ok: false, error: "Invalid status." };
+
+  const { error } = await supabase.from("projects").update({ status }).eq("id", projectId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateProject(projectId);
+  return { ok: true, error: null };
+}
+
+/** Update a project's tags. */
+export async function updateProjectTags(_prev: LogResult, formData: FormData): Promise<LogResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Please sign in first." };
+
+  const projectId = (formData.get("project_id") as string) || "";
+  if (!projectId) return { ok: false, error: "Missing project." };
+
+  const tagsRaw = ((formData.get("tags") as string) || "").trim();
+  const tags = tagsRaw
+    ? tagsRaw.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 10)
+    : [];
+
+  const { error } = await supabase.from("projects").update({ tags }).eq("id", projectId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateProject(projectId);
   return { ok: true, error: null };
 }
 

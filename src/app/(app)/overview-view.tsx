@@ -1,6 +1,6 @@
 "use client";
 
-import { addDays, eachDay, startOfMonth, startOfWeek, weekdayShort } from "@/lib/dates";
+import { addDays, eachDay, shortDate, startOfMonth, startOfWeek } from "@/lib/dates";
 import type { LifeSignals } from "@/lib/life-score";
 import type { scoreLabel } from "@/lib/life-score";
 import type { Insight, mascotStateFor } from "@/lib/motivation";
@@ -17,6 +17,8 @@ import type {
 } from "@/lib/types";
 import { SECTION_META } from "@/lib/nav";
 import { attentionStatuses, sectionStatuses, type TargetStatus } from "@/lib/targets";
+import { RangeToggle, useRange } from "@/components/ui/range-toggle";
+import { sliceTail } from "@/lib/range";
 import { TargetBadge, TargetWarnings } from "@/components/dashboard/target-warning";
 import { useMoney } from "@/components/locale-provider";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -59,6 +61,7 @@ export interface OverviewViewProps {
 
 export function OverviewView(p: OverviewViewProps) {
   const money = useMoney();
+  const [range, setRange] = useRange();
   const { today } = p;
   const statuses = p.statuses ?? [];
   const attention = attentionStatuses(statuses);
@@ -97,7 +100,7 @@ export function OverviewView(p: OverviewViewProps) {
   const spark = (section: SectionKey) => p.activity.slice(-21).map((a) => a.counts[section]);
   const expenseSpark = last7.map((d) => p.expenses.filter((e) => e.date === d).reduce((a, e) => a + e.amount, 0));
 
-  const trendData = p.lifeTrend.slice(-7).map((pt) => ({ label: weekdayShort(pt.date), value: pt.value }));
+  const trendData = sliceTail(p.lifeTrend, range).map((pt) => ({ label: shortDate(pt.date), value: pt.value }));
   const deltaVsLastWeek = p.score - (p.lifeTrend[p.lifeTrend.length - 8]?.value ?? p.score);
 
   return (
@@ -173,7 +176,7 @@ export function OverviewView(p: OverviewViewProps) {
 
       {/* trend + balance */}
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
-        <Panel title="Life Score Trend" className="lg:col-span-2" action="This week">
+        <Panel title="Life Score Trend" className="lg:col-span-2" action={<RangeToggle value={range} onChange={setRange} />}>
           <TrendChart data={trendData} color="var(--accent-mint)" height={240} domain={[0, 100]} />
         </Panel>
         <Panel title="Life Balance" subtitle="You vs ideal">

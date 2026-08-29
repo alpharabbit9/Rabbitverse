@@ -16,6 +16,8 @@ export interface ProjectTask {
   id: string;
   title: string;
   done: boolean;
+  detail?: string;
+  source?: "manual" | "ai";
 }
 
 /** A dated progress update — the app's "commit". One per day per project. */
@@ -33,9 +35,10 @@ export interface Project {
   targetValue: number;
   targetUnit: string; // "%", "sessions", "words", …
   current: number;
-  status: "ongoing" | "completed";
+  status: "planned" | "ongoing" | "completed";
   startDate: string;
   targetDate?: string;
+  tags?: string[];
   tasks?: ProjectTask[]; // milestone checklist; when present, drives progress %
   commits?: ProjectCommit[]; // dated written updates (detail view only)
   daysWorked?: number; // distinct days an update was logged
@@ -46,6 +49,8 @@ export interface ExpenseCategory {
   name: string;
   color: string; // css var or hex
   icon: string; // lucide icon name
+  /** Seeded on signup. Presets can be renamed/recoloured but never deleted. */
+  isPreset?: boolean;
 }
 
 export interface Expense {

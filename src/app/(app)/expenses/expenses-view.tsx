@@ -11,6 +11,9 @@ import { TrendChart } from "@/components/charts/trend-chart";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Icon } from "@/components/icon";
 import { useCurrencySymbol, useMoney } from "@/components/locale-provider";
+import { RangeToggle, useRange } from "@/components/ui/range-toggle";
+import { rangeStart } from "@/lib/range";
+import { HistoryPanel } from "./history-panel";
 
 /** How a week reads against the one before it — same three cases everywhere. */
 const WEEK_TONE = {
@@ -26,6 +29,7 @@ export function ExpensesView({
   today,
   statuses = [],
   logSlot,
+  canFetch = false,
 }: {
   categories: ExpenseCategory[];
   expenses: Expense[];
@@ -33,10 +37,14 @@ export function ExpensesView({
   today: string;
   statuses?: TargetStatus[];
   logSlot?: ReactNode;
+  /** Live mode only: the History panel may page back past the loaded year. */
+  canFetch?: boolean;
 }) {
   const money = useMoney();
   const symbol = useCurrencySymbol();
-  const last30 = eachDay(addDays(today, -29), today);
+  const [range, setRange] = useRange();
+  const from = rangeStart(today, range);
+  const rangeDays = eachDay(from, today);
   const sum = (from: string, to: string) =>
     expenses.filter((e) => e.date >= from && e.date <= to).reduce((a, e) => a + e.amount, 0);
 
@@ -61,11 +69,11 @@ export function ExpensesView({
   const dir: "up" | "down" | "flat" = week > prevWeek ? "up" : week < prevWeek ? "down" : "flat";
 
   const byCat = categories
-    .map((c) => ({ ...c, total: expenses.filter((e) => e.categoryId === c.id && last30.includes(e.date)).reduce((a, e) => a + e.amount, 0) }))
+    .map((c) => ({ ...c, total: expenses.filter((e) => e.categoryId === c.id && e.date >= from && e.date <= today).reduce((a, e) => a + e.amount, 0) }))
     .sort((a, b) => b.total - a.total);
   const maxCat = Math.max(1, ...byCat.map((c) => c.total));
 
-  const trend = last30.map((d) => ({ label: shortDate(d), value: expenses.filter((e) => e.date === d).reduce((a, e) => a + e.amount, 0) }));
+  const trend = rangeDays.map((d) => ({ label: shortDate(d), value: expenses.filter((e) => e.date === d).reduce((a, e) => a + e.amount, 0) }));
   const hasData = expenses.length > 0;
 
   return (
@@ -87,14 +95,14 @@ export function ExpensesView({
       </div>
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
-        <Panel title="Spending Trend" className="lg:col-span-2" subtitle={hasData ? WEEK_TONE[dir].subtitle : "Nothing logged yet"}>
+        <Panel title="Spending Trend" className="lg:col-span-2" subtitle={hasData ? WEEK_TONE[dir].subtitle : "Nothing logged yet"} action={<RangeToggle value={range} onChange={setRange} />}>
           {hasData ? (
             <TrendChart data={trend} color={WEEK_TONE[dir].color} height={240} suffix={symbol} />
           ) : (
             <EmptyChart label="Log an expense to start your spending trend." />
           )}
         </Panel>
-        <Panel title="By Category" subtitle="Last 30 days">
+        <Panel title="By Category" subtitle={`Last ${range}`}>
           {byCat.some((c) => c.total > 0) ? (
             <ul className="space-y-3">
               {byCat.map((c) => (
@@ -117,6 +125,8 @@ export function ExpensesView({
           )}
         </Panel>
       </div>
+
+      <HistoryPanel expenses={expenses} categories={categories} today={today} canFetch={canFetch} />
 
       <Panel title="Spending Activity" subtitle="Days you logged an expense">
         <ActivityHeatmap activity={activity} section="expenses" today={today} />
