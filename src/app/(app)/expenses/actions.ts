@@ -52,11 +52,15 @@ export async function updateExpense(_prev: LogResult, formData: FormData): Promi
   // Editing may reach back to any real past date — just never the future.
   if (!isEditableDate(spent_at, today)) return { ok: false, error: "Pick today or a past date." };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("expenses")
     .update({ amount, category_id, note, spent_at })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  // RLS lets a wrong or stale id match zero rows without erroring — report that
+  // as "gone" rather than a false success.
+  if (!data?.length) return { ok: false, error: "That expense no longer exists." };
 
   revalidateAll();
   return { ok: true, error: null };
@@ -76,6 +80,8 @@ export async function deleteExpense(_prev: LogResult, formData: FormData): Promi
   const id = (formData.get("id") as string) || "";
   if (!id) return { ok: false, error: "Missing expense." };
 
+  // No `.select()` guard here on purpose: delete is idempotent, so a row that a
+  // wrong/stale id doesn't match (RLS included) is already in the desired state.
   const { error } = await supabase.from("expenses").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
 

@@ -249,8 +249,13 @@ export async function updateCategory(input: {
   }
   if (!Object.keys(patch).length) return { ok: true, error: null };
 
-  const { error } = await supabase.from("expense_categories").update(patch).eq("id", input.id);
+  const { data, error } = await supabase
+    .from("expense_categories")
+    .update(patch)
+    .eq("id", input.id)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data?.length) return { ok: false, error: "That category no longer exists." };
 
   revalidateCategories();
   return { ok: true, error: null };

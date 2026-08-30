@@ -26,6 +26,16 @@ Follow these once to enable sign-in + real data. Free tier is plenty.
      `public.users` roster, `profiles` renamed to `user_profiles` with per-user timezone /
      currency / locale / mascot, and a rewritten `handle_new_user()` that writes the roster
      row and the profile inside the signup transaction. Idempotent; safe to re-run.
+   - [`0005_editable_logs.sql`](supabase/migrations/0005_editable_logs.sql) — **V3.0**: a
+     documented safety net for edit/delete (0001's policies already covered it).
+   - [`0006_project_planner.sql`](supabase/migrations/0006_project_planner.sql) — **V3.0**:
+     the `planned` project status, project tags, richer milestones.
+   - [`0007_admin.sql`](supabase/migrations/0007_admin.sql) — **V4.0**: `is_admin()`, the
+     `app_settings` singleton + `signup_mode()`, `admin_audit_log`, and the two counts-only
+     admin RPCs. See §8 — you must also promote yourself by hand afterwards.
+   - [`0008_invites.sql`](supabase/migrations/0008_invites.sql) — **V4.0**: `invites` +
+     `invite_redemptions`, `invite_check()` / `consume_invite()`, and the `handle_new_user()`
+     rewrite that enforces the signup mode inside the signup transaction. See §9.
 
 ## 3. Enable Google sign-in
 1. In [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services → Credentials**
@@ -44,6 +54,10 @@ Follow these once to enable sign-in + real data. Free tier is plenty.
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 3. _(Optional)_ Set `NEXT_PUBLIC_SITE_URL` if you're not on `localhost:3000`.
+3b. _(Optional, V4 admin panel)_ From the same **Project Settings → API** page copy the
+   **`service_role`** key into `SUPABASE_SERVICE_ROLE_KEY`. It bypasses Row Level Security,
+   so: no `NEXT_PUBLIC_` prefix, never in the browser, never in git. Without it the admin
+   panel still renders and reads correctly — it just refuses every write and says so. See §8.
 4. _(Optional, V2 AI logging)_ Set `GROQ_API_KEY` to a free key from
    [console.groq.com/keys](https://console.groq.com/keys). This powers the
    "type what I did" box; without it the box falls back to a simple offline
@@ -133,8 +147,9 @@ below is about data isolation — RLS already handles that. It stops one person
 from spoiling the shared key for everyone, and adds idempotency so a retried save
 can't double-write:
 
-- **per-user rate limits** — `parseLog` at 20/hour, `transcribe` at 30/day
-  (audio is the costly path);
+- **per-user rate limits** — Quick-Add `parseLog` at 20/hour, the AI Project
+  Planner at 20/hour (its own bucket), `transcribe` at 30/day (audio is the
+  costly path);
 - a **global daily circuit breaker** on the key, so one user can't burn the whole
   quota;
 - **idempotency** on `saveIntents`.
@@ -155,5 +170,74 @@ simply don't engage until you wire them.
 
 3. **That's it.** No migration, no code change to flip on — the guardrails detect
    the env vars at runtime. Verify from Upstash's **Data Browser**: after a few
-   AI-box uses you'll see `rl:parse:*` / `rl:transcribe:*` counters, a
-   `cb:groq:<date>` circuit-breaker key, and `idem:*` claims appear and expire.
+   AI-box uses you'll see `rl:parse:*` / `rl:planner:*` / `rl:transcribe:*`
+   counters, a `cb:groq:<date>` circuit-breaker key, and `idem:*` claims appear
+   and expire. To confirm the cap bites, fire 21 parses inside an hour — the 21st
+   comes back refused.
+
+## 8. Admin panel (V4.0) — promoting the first admin
+
+`public.users.role` has existed since 0004 and defaults to `'member'` for everybody,
+including you. Migration `0007_admin.sql` deliberately does **not** hard-code an email, so
+after running it you have an admin panel and zero admins. Promote yourself once, by hand:
+
+```sql
+update public.users set role = 'admin' where email = 'you@example.com';
+```
+
+Then reload the app: an **Admin** link appears in the sidebar (and a row in Settings), and
+`/admin` opens. For anyone else — and in demo mode — that URL is a 404; they are never told
+the route exists.
+
+Three things worth knowing:
+
+- **A suspended admin is not an admin.** `is_admin()` requires `status = 'active'`, so
+  suspending an account revokes its panel access too. That is intentional.
+- **The panel only ever shows counts.** Both admin RPCs return `bigint` columns, so no
+  journal entry, expense note or project description can reach the page — there is no field
+  for one to arrive in.
+- **The SQL editor runs as `postgres`,** where `auth.uid()` is null, so calling
+  `admin_user_stats()` or `admin_overview()` from it raises `not_authorized`. Test through
+  the app, or set the claims first:
+
+  ```sql
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"<your-user-uuid>","role":"authenticated"}';
+  select * from public.admin_overview();
+  ```
+
+If you ever lock yourself out — the guards refuse self-demotion and demoting the last admin,
+but a direct `update` will not — the SQL above is the way back in.
+
+## 9. The signup gate (V4.0) — closing the door
+
+Until 0008 is applied, `/signup` is open to anybody with the URL. The app is written to
+survive that: `getSignupMode()` fails **open** if `signup_mode()` is missing or errors, so a
+half-applied database keeps behaving exactly as it did before rather than locking everyone
+out of an app nobody can fix from inside.
+
+After running `0008_invites.sql`, the switch lives at **/admin/settings**:
+
+- **Open** — today's behaviour. Anyone with the link can sign up.
+- **Invite only** — a live code, or an invited address, is required.
+- **Closed** — nobody new at all.
+
+**No mode ever affects an existing account.** The gate refuses account *creation*; everybody
+who already signed up keeps signing in in every mode. Verify that yourself after switching
+to `closed` — it is the property most worth being sure about.
+
+Two things that surprise people:
+
+- **Google needs an email-bound invite.** There is nowhere to type a code on a consent
+  screen, so under invite-only mode a Google user has to be invited *by address* (the "Invite
+  by email" field on /admin/invites). A code-only invite works on the email + password form
+  and nowhere else.
+- **The gate also applies to `auth.admin.createUser()`,** because it lives inside
+  `handle_new_user()` — the only place that runs for OAuth. If you ever add an "admin creates
+  an account" feature it must pass `user_metadata.invite_code`, or teach the trigger a bypass.
+
+To flip the mode without the panel (or to get back if you closed it by accident):
+
+```sql
+update public.app_settings set signup_mode = 'open' where id;
+```

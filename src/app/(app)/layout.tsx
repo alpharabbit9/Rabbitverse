@@ -60,7 +60,7 @@ export default async function AppLayout({
             <MoodMode mood={mood} />
           </Suspense>
           <ServiceWorkerRegister />
-          <Sidebar profile={chip} />
+          <Sidebar profile={chip} isAdmin={session?.isAdmin ?? false} />
           <div className="lg:pl-72">
             <MobileHeader />
             <main className="mx-auto w-full max-w-[1440px] px-4 pb-32 pt-4 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">

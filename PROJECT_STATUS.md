@@ -11,7 +11,7 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-08-29_
+_Last updated: 2026-08-30_
 
 > **V2 has begun.** V1 is finished; V2.0 ("Tell Rabbit what you did; Rabbit tells you when
 > you're off-track") is a two-pillar build in **7 phases** — full spec in the plan file
@@ -22,7 +22,31 @@ _Last updated: 2026-08-29_
 
 ## 1. Status at a glance
 
-**Phase: V3.0 shipped — all eight phases (A–H) are in the code.** Anyone can hold an account, pick
+**Phase: V4.0 Part 1 is complete in the code — Phases A, B, C and D.** The app has owner controls
+and a door. `/admin` lists every account with per-user row **counts** (never content), and an admin
+can suspend, reactivate, promote, demote, send password resets and — behind a type-the-email
+confirmation over the exact counts — **delete an account outright**. `/admin/settings` sets sign-ups
+to open, invite-only or closed; `/admin/invites` mints and revokes codes and invited addresses. Every
+write is guarded twice, audited, and visible in an append-only trail at `/admin/audit`. To a member
+none of it exists: 404, and no sidebar link.
+
+**Migrations `0007_admin.sql` and `0008_invites.sql` are now APPLIED** to the live database
+(project `utmfkmcqkbjbrvcnmbpr`), run by hand in the Supabase SQL editor on 2026-08-30. Probed from
+the anon key: `signup_mode()` → `"open"`, `invite_check()` works and is not a code oracle,
+`admin_overview()` refuses the anon client with `not_authorized`, `app_settings` reads back `[]`
+(deny-all RLS). `SUPABASE_SERVICE_ROLE_KEY` is set in the Vercel project env, and
+`alpharabbit74@gmail.com` has been promoted (`update public.users set role = 'admin'`). The local
+`.env.local` still comments the service-role key out, so a *local* admin panel is read-only; the
+deployed one is not.
+
+**Part 2 status: Phases E (code) and G (audit + fixes) done.** Phase E's code is in — the AI Project
+Planner has its own `rl:planner` bucket, README / env drift fixed. Phase G's automated half is green
+(tsc · eslint · `vitest` 225 · `next build`) and a static audit of every Phase G surface produced
+four fixes (see the top session-log entry). What's left for E is Upstash key provisioning; what's
+left for G is the human checklist (signup/OAuth/inbox/iOS/two-account RLS) that can't be automated.
+F, H, I unchanged.
+
+**Before that (V3.0) — all eight phases (A–H) are in the code.** Anyone can hold an account, pick
 their creature, talk to the AI box, edit or delete anything they logged, plan a project with AI-drafted
 milestones, dig through their spending a month at a time, set their own categories and training split,
 and take every row with them as JSON or CSV. What is left is **infrastructure, not code**: a signed-in
@@ -191,6 +215,59 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
   `MilestoneGenerator` + `CommitMilestoneMatcher` components on the detail view.
   Migration `0006_project_planner.sql`. 127 tests pass.
 
+### V4.0 — Admin panel + launch infrastructure (Part 1 A–D · Part 2 E–I)
+> Plan: `C:\Users\User\.claude\plans\for-next-updates-misty-fog.md`. Part 1 is the owner
+> controls that gate other people using the app; Part 2 is key provisioning and deploys.
+> **Migrations `0007` + `0008` applied to the live DB on 2026-08-30** (hand-run in the SQL editor);
+> `SUPABASE_SERVICE_ROLE_KEY` set in Vercel; `alpharabbit74@gmail.com` promoted to admin.
+- ✅ **A — Read-only admin panel**: migration `0007_admin.sql` (`is_admin()`, the `app_settings`
+  singleton + anon-readable `signup_mode()`, `admin_audit_log`, the missing `user_id` indexes, and
+  the two counts-only RPCs `admin_user_stats` / `admin_overview`); `lib/admin/{types,roles,format,
+  guard}.ts`; `lib/supabase/admin.ts` (service-role client, write-only, one caller);
+  `lib/data/admin.ts` (the whole read surface — two RPCs plus the audit table, nothing else); the
+  `(admin)` route group with its own sober shell, `loading`/`error` boundaries and a tab bar; the
+  roster table with search, server-side roster sorting and page-local count sorting;
+  `session.isAdmin`, a path-scoped `/admin` check in `proxy.ts`, and the sidebar + Settings links.
+- ✅ **B — Reversible moderation**: `lib/admin/guards.ts` (self-suspend, self-demote and
+  last-admin-demote all refused, as pure functions run **twice** — to disable the button with a
+  reason, and again in the action before the write); `components/ui/confirm-dialog.tsx`;
+  `(admin)/admin/actions.ts` with `setUserStatus` / `setUserRole` / `sendPasswordReset`, each
+  walking the same seven steps (assert → service-role check → rate limit → validate → pure guard →
+  write → audit); the per-row ⋯ menu; and the read-only `/admin/audit` trail.
+- ✅ **C — Destructive**: `deleteUserAccount(userId, confirmEmail)` on `auth.admin.deleteUser` +
+  the cascade; the audit row written *before* the delete (and a `user.delete_failed` row if the
+  delete then fails, so the trail never claims a deletion that did not happen); a red modal listing
+  the exact row counts about to go, with the target's email typed back — checked in the dialog and
+  again in the action by the same pure `confirmationMatches`. No migration needed: every content
+  table already cascades from `auth.users`.
+- ✅ **D — Signup gate & invites**: migration `0008_invites.sql` (`invites` + `invite_redemptions`,
+  `invite_live()` / `invite_check()` / `consume_invite()`, and the `handle_new_user()` rewrite that
+  enforces the mode inside the signup transaction); `lib/admin/invites.ts` (pure codes + status);
+  `lib/data/signup.ts` (fails open); `/admin/invites` and `/admin/settings`; `/signup`'s three
+  states; and the OAuth `blocked=` branch in `/auth/callback`.
+- 🟡 **E — Upstash provisioning**: code + docs done — the AI Project Planner moved to its own
+  `rl:planner` rate-limit bucket (was sharing `rl:parse` with Quick-Add), dead `ALLOWED_EMAIL`
+  removed from `.env.local`, `README.md` drift fixed (multi-user framing, the full env table,
+  per-user tz/currency). `SUPABASE_SERVICE_ROLE_KEY` **is now set in Vercel** (2026-08-30).
+  **Outstanding (infra, user-only):** create the Upstash DB and set `UPSTASH_REDIS_REST_URL` /
+  `_TOKEN` in `.env.local` and Vercel, then verify the cap bites (21 parses/hr → 21st refused).
+- ⬜ **F — Reminders deploy**
+- 🟡 **G — Signed-in live pass**: automated half green (tsc · eslint · `vitest` 225 · `next build`),
+  signed-out access matrix verified against the live DB, and a static audit of every Phase G surface
+  landed **four fixes** (2026-08-30 session log): (1) `proxy.ts` `/admin` rewrite now passes an
+  explicit `{ status: 404 }` — verified Next 16 already 404s a `/404` rewrite, comment locks it in;
+  (2) `/auth/callback` now lifts an OAuth error out of the URL **fragment** via a tiny inline script
+  and re-hits itself as a query param, so a fragment-delivered refusal reaches the `blocked=` branch;
+  (3) `isSuspended()` in `auth/actions.ts` takes the just-signed-in client so the sign-in-time
+  suspension gate reads the user's own roster row reliably; (4) the seven `update` log actions
+  (`updateExpense`, `updateJournalEntry`, `updateCommit`, `setProjectStatus`, `updateProjectTags`,
+  `renameProject`, `updateCategory`) now `.select("id")` and report a wrong/stale id as "no longer
+  exists" instead of a false success (deletes left idempotent on purpose). **Outstanding (human,
+  can't be automated):** signup → email confirm → sign-in → sign-out (email + Google); password
+  reset; voice on iOS Safari; two-account RLS isolation; suspension's three gates end-to-end; the
+  full CRUD/export/range-persist walk against a real account.
+- ⬜ **H — Mascot art** · ⬜ **I — CI**
+
 ### Beyond V2.0 (design-for, not building)
 - ⬜ 2.1 — AI reflections & advice (weekly summary over aggregates + target statuses)
 - ⬜ 2.2 — Income & savings (new domain + savings-goal target + new parser intents)
@@ -219,8 +296,15 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
 **Now present (auth layer):** `src/lib/supabase/` clients, `src/proxy.ts` guard, `login/` + `auth/`
 (actions + callback + allowlist), `supabase/migrations/0001_init.sql` (schema + RLS + seed),
 `.env.local.example`, `SUPABASE_SETUP.md`. App defaults to demo mode until keys are set.
-**Still not present:** a created Supabase project + `.env.local`, section reads/writes wired to the DB,
-service worker, push subscription code.
+**Now present (owner layer, V4.0 Part 1):** `src/app/(admin)/` (users · audit · invites · settings),
+`src/lib/admin/` (types, roles, guard, guards, format, invites — all pure except `guard.ts`),
+`src/lib/data/admin.ts` (the counts-only read surface) + `src/lib/data/signup.ts` (the mode, failing
+open), `src/lib/supabase/admin.ts` (service role, one caller, write-only), and migrations
+`0007_admin.sql` + `0008_invites.sql` — **applied to the live DB 2026-08-30**; `SUPABASE_SERVICE_ROLE_KEY`
+set in Vercel; `alpharabbit74@gmail.com` promoted to admin. (Local `.env.local` still comments the
+service-role key out → local admin panel is read-only.)
+**Still not present:** Upstash keys, the reminders Edge Function + cron deploy, Higgsfield mascot art,
+CI. **Not yet exercised end-to-end:** the human Phase G checklist (see the roadmap).
 
 ---
 
@@ -228,7 +312,265 @@ service worker, push subscription code.
 
 > Newest first. Each entry: date · what changed · what's next.
 
-### 2026-08-29 (latest) — V3.0 Phase G shipped: depth, performance, resilience, user-owned config
+### 2026-08-30 (latest) — V4.0 Phase G: audit + four fixes; migration state corrected
+
+Phase G is the signed-in live pass — most of it (real signup, Google OAuth, an email inbox, an
+iPhone, two accounts for RLS isolation) can only be done by hand. This session did the parts that
+*can* be done from here: the automated suite, a signed-out pass against the real database, and a
+close static audit of every Phase G surface. It also turned up that the status doc was wrong about
+the migrations.
+
+- **The migrations are applied.** This doc said `0007_admin.sql` and `0008_invites.sql` were "written,
+  neither applied yet." Probing the live project (`utmfkmcqkbjbrvcnmbpr`) from the anon key:
+  `signup_mode()` → `"open"`, `invite_check('RV-…', null)` → `false` (works, not a code oracle),
+  `admin_overview()` on the anon client → `not_authorized` (42501), `app_settings` → `[]` (deny-all
+  RLS holds). Rifat confirms: both migrations were hand-run in the SQL editor, `SUPABASE_SERVICE_ROLE_KEY`
+  is set in Vercel, and `alpharabbit74@gmail.com` was promoted with
+  `update public.users set role = 'admin'`. Corrected §1 and the V4.0 roadmap.
+
+- **Automated verification, all green:** `tsc --noEmit` clean · `eslint` clean · `vitest` **225/225**
+  · `next build` clean, all 22 routes present, no server-only module in a client bundle.
+
+- **Signed-out access matrix, verified live:** `/` → `/login`, `/admin` (signed out) → `/login`,
+  `/signup` renders the open-mode form (Name + Confirm, no invite field). No console or server
+  errors. Same on `rabbitverse.vercel.app`. Confirmed in Next 16.2 that
+  `NextResponse.rewrite(new URL("/404", …))` returns a **real 404** (tested three variants) — the
+  audit's worry that it might 200 was based on older Next behaviour.
+
+- **Four fixes from the audit:**
+  1. **`proxy.ts`** — the `/admin` non-admin rewrite now passes `{ status: 404 }` explicitly (it
+     already 404'd; this makes it unambiguous) and a comment records that `/404` is a deliberate,
+     verified target, not a Pages-Router leftover to "fix".
+  2. **`/auth/callback/route.ts`** — plan Gotcha #2. Some GoTrue/OAuth failures arrive in the URL
+     **fragment**, which a server route handler never sees, so a refused Google signup could land on
+     a bare callback. The no-code/no-`?error` fallthrough now returns a bare inline script that lifts
+     `#error` / `#error_description` into the query string and re-hits the same route, so the
+     existing `blocked=` branch handles it. No fragment error → still falls through to `/login`.
+  3. **`auth/actions.ts::isSuspended`** — was opening a *fresh* `createClient()` mid-request, which
+     may not see the cookies `signInWithPassword` just set, so `auth.uid()` could be null and the
+     suspended user's own roster row invisible (→ RLS returns nothing → treated as not-suspended).
+     Now takes the caller's just-authenticated client. `(app)/layout.tsx` was already the backstop;
+     this makes the sign-in-time gate itself reliable.
+  4. **Silent zero-row writes** — `updateExpense` / `updateJournalEntry` / `updateCommit` /
+     `setProjectStatus` / `updateProjectTags` / `renameProject` / `updateCategory` did
+     `.update(…).eq("id", …)` with no `.select()`, so a wrong or stale id (RLS non-match included)
+     returned `{ ok: true }` — a false "saved". All seven now `.select("id")` and return "no longer
+     exists" on an empty result. Deletes were deliberately left un-guarded: a delete that matches
+     nothing is already in the desired state, and guarding it would make the undoable-delete flow
+     resurrect a row on a concurrent delete.
+
+- **Audit items left for the human pass (not bugs, verify behaviour):** the OAuth error-in-fragment
+  path now has code but needs a real refused Google signup to exercise; suspension has no JWT
+  revocation (documented tradeoff — a suspended user gets one more RSC request before
+  `(app)/layout.tsx` bounces them; a Server Action from an already-open tab is RLS-confined);
+  `useUndoableDelete` cancels the server delete if you navigate away inside the 5 s grace (comment
+  calls it the safe default); milestone generation reads only `projects.goals`, not `description`.
+
+- **Verified after the fixes:** `tsc` · `eslint` · `vitest` **225/225** · `next build` all clean.
+
+- **Next:** the human Phase G checklist (§Phase G of `for-next-updates-misty-fog.md`) — now unblocked
+  for the admin/suspension/invite rows since the migrations, the service-role key and an admin
+  account are all in place. Then E (Upstash keys), F (reminders deploy), H (mascot art), I (CI).
+
+### 2026-08-30 — V4.0 Part 2, Phase E: the planner gets its own bucket
+
+Phase E is mostly infrastructure the code can't do for itself (create an Upstash database, paste keys
+into Vercel). What the code *could* fix, it now has — one real bug and a pile of doc drift.
+
+- **The AI Project Planner had no rate limit of its own.** `projects/ai-actions.ts` called
+  `parseLogLimit(user.id)`, which keys on `rl:parse` — the exact bucket Quick-Add's sentence parser
+  uses. So a user who typed 20 sentences into Quick-Add in an hour would then find "generate
+  milestones" and "check off milestones from this update" both refused, and vice versa, even though
+  they're unrelated actions done at different rates. New `plannerLimit()` in `lib/redis.ts` gives the
+  planner its own `rl:planner` bucket at the same 20/hour; the global `groqDailyBudget` circuit
+  breaker still spans both. `filterMatchIds` + the demo fallbacks are untouched. +1 test (225 total).
+- **`.env.local` still carried `ALLOWED_EMAIL`** — dead since V3.0 Phase B removed the single-email
+  allowlist in favour of `public.users.status`. Deleted. Added commented `UPSTASH_REDIS_REST_URL` /
+  `_TOKEN` / `GROQ_DAILY_LIMIT` placeholders so wiring Redis later is copy-paste.
+- **`README.md` was describing a different app.** It still said "private, single-user life-tracking
+  PWA … Google sign-in locked to one allowlisted email … no backend yet," listed a four-row env
+  table missing `GROQ_API_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and the Upstash pair, and claimed
+  Asia/Dhaka-only + ৳-BDT-only + English-only in Conventions — all three per-user since 0004. Rewrote
+  the header, tech-stack line, env table and Conventions to match what's actually shipped.
+- **`.env.local.example`** gained a `SUPABASE_SERVICE_ROLE_KEY` placeholder (it was only in the real
+  `.env.local`, commented); **`SUPABASE_SETUP.md` §7** now names the `rl:planner:*` counter and the
+  21-parses-in-an-hour check.
+- **Verified:** `tsc --noEmit` clean · `eslint` clean · `next build` clean · `vitest` **225/225**.
+  No behaviour change until Upstash keys are set — every guardrail still fails open unconfigured, so
+  local/demo is byte-identical.
+- **Outstanding — infra, and only the account holder can do it:** create an Upstash Redis database
+  (free tier), copy the REST URL + token into `.env.local` **and** Vercel project env; uncomment
+  `SUPABASE_SERVICE_ROLE_KEY` and paste the `service_role` key (Supabase → Settings → API) in both
+  places too — Phase A's admin panel needs it to perform writes. Then verify from the Upstash Data
+  Browser that `rl:parse:*` / `rl:planner:*` / `cb:groq:<date>` keys appear, and that the 21st parse
+  in an hour is refused.
+- **Next:** F (reminders deploy — VAPID keypair + `supabase functions deploy send-reminders`, and the
+  `CRON_SECRET` fail-closed fix first) · G (signed-in live pass) · H (mascot art) · I (CI).
+
+### 2026-08-30 — V4.0 Part 1, Phases C & D: deletion, and a door
+
+Part 1 finishes with the two things the panel could not yet do: get rid of an account, and stop new
+ones arriving.
+
+- **Phase C — delete an account.** `deleteUserAccount(userId, confirmEmail)` in
+  `(admin)/admin/actions.ts`, walking the same seven steps as the other three writes but on a tighter
+  rate limit (`rl:admin:delete`, 10/hour — 60 reversible writes an hour is generous, 60 deletions an
+  hour is a compromised session emptying the database). **No migration was needed**, and that was
+  checked rather than assumed: every content table's `user_id` is
+  `references auth.users (id) on delete cascade` in 0001/0002, and `public.users` /
+  `public.user_profiles` cascade too, so one `auth.admin.deleteUser` call takes all thirteen tables
+  with it.
+- **The audit row goes in FIRST.** `admin_audit_log.target_id` is `on delete set null`, so a row
+  written afterwards would point at nobody — and if that write ever failed, the one permanent action
+  in the app would be the only one leaving no trace. The cost of writing first is a row claiming a
+  deletion that then failed, so the failure path appends `user.delete_failed` with the reason. The
+  denormalised `target_email` is what keeps the trail legible after the account is gone.
+- **The confirmation.** A red modal listing the exact counts about to be destroyed —
+  `142 expenses · 61 journal entries · 3 projects`, from `describeCounts()` over the row already on
+  screen, so no extra read and still numbers rather than anything anybody wrote — the sentence "This
+  cannot be undone. There is no backup.", and the target's email typed back. `ConfirmDialog` now
+  passes what was typed to `onConfirm`, so the server re-checks it with the same pure
+  `confirmationMatches` instead of trusting that the button was disabled.
+- **Phase D — migration `0008_invites.sql`.** `invites` (a code, a bound address, or both; `citext`
+  so case never matters; revocation is `revoked_at`, never a delete, because `invite_redemptions`
+  references it) and `invite_redemptions` (composite PK, deny-all RLS). `invite_live()` is marked
+  **`stable`, not `immutable`** as the plan had it — it reads `now()`, and lying to the planner about
+  that would let an expired invite keep working until something invalidated the cached plan.
+  `invite_check()` is granted to `anon` and returns a **boolean only**, so it is not a code oracle:
+  "no" covers never-existed, spent, expired, revoked and wrong-address indistinguishably.
+- **`consume_invite()` is the actual gate,** and is plpgsql purely so it can hold a `for update`
+  lock. Two people racing the last use of a five-use code both read `uses = 4`; the lock serialises
+  them and the second re-reads the row after waiting, sees `uses = 5`, and is refused. Code first,
+  then email-bound. No grant to anybody — the trigger runs as its definer, and the service role
+  bypasses grants.
+- **`handle_new_user()` gains a head and keeps its body verbatim.** `closed` raises `signup_closed`;
+  `invite` raises `invite_required` unless `consume_invite` succeeds. This is the only place that
+  runs for Google OAuth, which writes `auth.users` before any app code does — everything in `src/` is
+  a nicer error message in front of it. It also gates `auth.admin.createUser()`, which the comment
+  says out loud so a future "admin creates an account" feature does not discover it by surprise.
+- **Codes.** `RV-XXXX-XXXX` over `23456789ABCDEFGHJKMNPQRSTVWXYZ` (no `0/O/1/I/L/U`). The plan said
+  "10 chars ≈ 49 bits" beside a format that has room for eight; the format won, so it is ~39 bits —
+  ample against an online, rate-limited, single-use, revocable code whose only oracle answers
+  yes/no. `generateInviteCode(bytes)` takes its randomness as an argument, the same shape as
+  `slidingWindowEstimate(…, now)`, so it is pure and testable; the caller supplies
+  `crypto.getRandomValues`. `normalizeInviteCode` accepts every way a person pastes the same code
+  and hands nonsense back unchanged, so "typed it oddly" and "typed rubbish" stay distinguishable.
+- **`inviteStatus` precedence is revoked → expired → used → live.** A revoked-and-expired code reads
+  as revoked: that is the state somebody chose on purpose and the one they will be looking for.
+- **The read surface held.** `getInvites()` joins the admin read layer, so `read-surface.test.ts`
+  now allows `.from("invites")` alongside `admin_audit_log` — both admin-owned, both with an
+  `is_admin()` select policy and no write policy at all, neither holding a word anybody wrote about
+  their life. Everything else about the counts-only guarantee is unchanged.
+- **`lib/data/signup.ts` fails open, twice.** The SQL coalesces a missing settings row to `open`, and
+  the catch turns any error at all — migration not applied, network blip — into `open` as well. A
+  gate that failed *closed* would lock every future user out of an app nobody can un-break from
+  inside. The catch re-throws anything carrying a `digest`, because Next signals "this render cannot
+  be static" by throwing and swallowing that would prerender a stale answer.
+- **`/signup` in three states**, `/admin/settings` to switch between them, `/admin/invites` to mint
+  and revoke. The Google button **stays** in invite mode, with a line saying an address has to be
+  invited — because there is nowhere to type a code on a consent screen. When the trigger refuses an
+  OAuth signup, GoTrue bounces to the callback with a generic error; `/auth/callback` re-reads the
+  mode to tell "the door" apart from "something broke" and sends the person to
+  `/signup?blocked=closed|invite`, which explains itself. If the mode is `open`, it keeps the old
+  `?error=auth` rather than pointing at a gate that is not there.
+- **`signUpWithPassword` never trusts what was rendered** — it re-reads the mode and re-checks the
+  code before calling Supabase, then passes `options.data.invite_code` for the trigger to spend. Both
+  app-side checks are cosmetic by design; the transaction decides.
+- **Verified:** `npm run build` clean, with `ƒ /admin/invites` and `ƒ /admin/settings` in the route
+  table · `eslint` clean · `vitest` **224/224** (+24 across `invites`, `describeCounts` and
+  `describeDeadline`). On the dev server `/signup` renders the open form unchanged and logs the
+  expected fail-open warning (`signup_mode()` is not in the schema cache — 0007 has never been run),
+  with no React or hydration errors; `/admin/invites` and `/admin/settings` bounce a signed-out
+  visitor to `/login`.
+- **Not verified — needs the migrations and a signed-in admin.** Everything behind a real account:
+  the delete cascade, invite creation and redemption, the race under `for update`, all three signup
+  modes, and the OAuth `blocked=` bounce. Note that **0007 has never been applied either** — the
+  Phase A/B panel has not run against the live database yet.
+- **Next:** apply `0007_admin.sql` then `0008_invites.sql`, promote yourself
+  (`update public.users set role = 'admin' where email = '…'`), and do the signed-in pass over
+  A–D in one go. Then Part 2: E (Upstash) · F (reminders deploy) · G (live pass) · H (mascot art) ·
+  I (CI).
+
+### 2026-08-30 — V4.0 Part 1, Phases A & B: the admin panel
+
+Rabbit Verse had self-serve signup and no owner controls at all — no way to see who had signed up,
+no way to stop an abuser, and `public.users.role` had existed since 0004 without a single line of
+`src/` ever reading it. That unused column is now the foundation of a panel.
+
+- **Migration `0007_admin.sql`.** `is_admin(uid)` (`security definer`, because `public.users` is
+  select-own — and **a suspended admin is not an admin**, said in the comment so nobody "fixes" it);
+  an `app_settings` singleton (`id boolean primary key check (id)`, so a second row is impossible
+  rather than merely discouraged) with RLS on and **no policies at all**, so only the service role
+  writes it; `signup_mode()`, granted to `anon` so a signed-out `/signup` can read it in Phase D,
+  with `coalesce(..., 'open')` so an empty table fails **open** instead of locking everyone out;
+  `admin_audit_log` with **denormalised** actor/target emails (both id columns are `on delete set
+  null`, so without the copies a row would read "somebody did something to somebody"), an admin
+  `select` policy and deliberately **no insert policy**; and the four genuinely-missing `user_id`
+  indexes — `workout_plan_days` and `body_metrics` already have `unique (user_id, ...)` covering
+  them, so the plan's list of six was trimmed to four.
+- **Counts only, enforced structurally.** `admin_user_stats(search, sort, dir, limit, offset)`
+  returns roster columns + **ten `bigint` counts** + `last_active` + `match_count`, computed by
+  correlated sub-selects over a 25-row page — one call, not an N+1. Its *return signature* cannot
+  carry a journal sentence, which is exactly why the admin's reads run on the **anon cookie client**
+  and not the service-role key. Four things now guarantee it: RLS, the RPC signatures, a service-role
+  client used by one file (writes only), and `read-surface.test.ts`, which reads `lib/data/admin.ts`
+  as text and fails if a content table is so much as *named* in it — comments included.
+- **Sorting, honestly.** Roster columns (user, status, role, joined) sort in Postgres via the URL, so
+  they order every account you have. Counts and "last active" cannot — that would mean counting ten
+  tables for every user in the database in order to sort twenty-five rows — so those sort the current
+  page client-side and the footer says *"sorted on this page only"* rather than quietly lying. The
+  order-by is a fixed CASE ladder over a whitelist, so `p_sort` never reaches the planner as text.
+- **The `(admin)` route group.** Its own layout, because `(app)/layout.tsx` fans out five mood-signal
+  queries, a profile summary and the mascot provider before it renders anything — none of which mean
+  a thing here. Sober on purpose: no aura, no creature. `requireAdmin()` is the authoritative gate
+  and calls `notFound()` (404, not 403 — a member has no reason to learn the route exists, and Next
+  16's `forbidden()` needs `experimental.authInterrupts`). `proxy.ts` blocks `/admin*` at the edge
+  too, **path-scoped**, so that file's no-round-trip-per-request rule still holds for every route a
+  member actually uses.
+- **Moderation (Phase B).** `setUserStatus`, `setUserRole` and `sendPasswordReset`, each walking the
+  same seven steps: `assertAdmin()` → service-role configured? → `rateLimit()` (60/hr, and 5/hr for
+  resets since those send mail; fails open like every other guardrail) → validate against the pure
+  predicates → read the target plus the admin count and run the pure guard → write → audit and
+  revalidate. The three lockout traps — suspend yourself, demote yourself, demote the last admin —
+  are refused by pure functions in `lib/admin/guards.ts` that run **twice**: in the browser to
+  disable the menu item with the reason as its tooltip, and again server-side, because a disabled
+  button is a suggestion rather than a control.
+- **Read-only degradation.** With `SUPABASE_SERVICE_ROLE_KEY` unset the panel still renders and reads
+  correctly (the reads never needed it), every write refuses with a clear sentence, the menu items
+  are disabled with the reason, and the layout carries a persistent amber banner. A useful read-only
+  panel beats buttons that silently do nothing.
+- **Two deliberate corrections to the plan.**
+  1. The plan asked for `auth.admin.signOut(userId, "global")` inside `setUserStatus` as a "one-line
+     upgrade" giving instant revocation. That API takes the **user's own JWT**, which an admin does
+     not hold, so it cannot do what was intended. The alternative — a GoTrue `ban_duration` — would
+     break the friendly `/suspended` landing the plan's own ship gate asks for, because a banned
+     account fails sign-in with a generic credentials error instead. So suspension stays
+     `public.users.status` alone: enforced at sign-in, at the OAuth callback, and in
+     `(app)/layout.tsx` on **every** request, which catches a live session the moment they navigate.
+     The residual gap is a Server Action fired from an already-loaded tab, and RLS confines that to
+     the user's own rows. Written down in the action rather than papered over.
+  2. `admin_overview()` counts live invites behind a `to_regclass('public.invites')` check, so it is
+     correct both before and after Phase D instead of reporting zero forever if somebody forgets to
+     come back and edit it.
+- **Docs.** `SUPABASE_SETUP.md` gains §8 — promote the first admin by hand, because a migration must
+  not hard-code an email; the SQL-editor `auth.uid()` gotcha; and the way back in if you ever lock
+  yourself out — and §2 now lists `0005`–`0007`, which it had been missing. `README.md`'s env table
+  swaps the long-dead `ALLOWED_EMAIL` row for `SUPABASE_SERVICE_ROLE_KEY`. `.env.local` gains a
+  commented placeholder.
+- **Verified:** `tsc --noEmit` clean · `eslint` **0 problems** · `next build` clean, with `ƒ /admin`
+  and `ƒ /admin/audit` in the route table — the build is also the real check that the service-role
+  module never leaked into a client bundle · `vitest` **200/200** (+50 new across `roles`, `format`,
+  `guards` and `read-surface`). On the demo server, `/admin` returns a 404 with no server errors, and
+  `/settings` renders with no Admin panel and no `/admin` link: the demo-mode row of the access
+  matrix.
+- **Not verified — needs a signed-in pass.** Everything requiring a real admin account: the roster
+  against live rows, suspend → `/suspended` → reactivate, promote/demote, the refusals,
+  password-reset mail, and the audit trail filling up. Add it to the standing live pass (V4 Phase G).
+  Also unrun: `0007_admin.sql` itself, and the `update public.users set role = 'admin'` bootstrap.
+- **Next:** apply `0007_admin.sql`, promote yourself, then Phase C (delete an account) and Phase D
+  (signup gate + invites). *(Both landed the same day — see the entry above.)*
+
+### 2026-08-29 — V3.0 Phase G shipped: depth, performance, resilience, user-owned config
 
 The last planned V3.0 phase. Nothing new to *learn* here — the sections you already use got deeper,
 faster and harder to break, and the last few constants became yours to set.

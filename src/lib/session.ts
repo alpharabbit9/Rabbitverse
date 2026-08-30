@@ -19,10 +19,12 @@ import {
   type LocaleContext,
   normalizeLocaleContext,
 } from "@/lib/locale";
+import { toUserRole, toUserStatus } from "@/lib/admin/roles";
+import type { UserRole, UserStatus } from "@/lib/admin/types";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
-export type UserStatus = "active" | "suspended";
+export type { UserRole, UserStatus };
 
 export interface AppSession extends LocaleContext {
   userId: string;
@@ -33,6 +35,12 @@ export interface AppSession extends LocaleContext {
   /** Already coerced to a species the registry can draw. */
   mascot: MascotSpecies;
   status: UserStatus;
+  role: UserRole;
+  /**
+   * The single answer to "may this person open /admin?" — mirroring the SQL
+   * `is_admin()` exactly, suspension included, so the two can never disagree.
+   */
+  isAdmin: boolean;
 }
 
 /**
@@ -57,8 +65,13 @@ export const getSession = cache(async (): Promise<AppSession | null> => {
       .select("display_name, avatar_url, mascot, timezone, currency, locale")
       .eq("id", user.id)
       .maybeSingle(),
-    supabase.from("users").select("status").eq("id", user.id).maybeSingle(),
+    // `role` rides along in a query that already runs every request, so admin
+    // status costs nothing extra and — unlike a JWT claim — is never stale.
+    supabase.from("users").select("status, role").eq("id", user.id).maybeSingle(),
   ]);
+
+  const status = toUserStatus(roster?.status);
+  const role = toUserRole(roster?.role);
 
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
   const metaString = (key: string) => (typeof meta[key] === "string" ? (meta[key] as string) : "");
@@ -80,7 +93,9 @@ export const getSession = cache(async (): Promise<AppSession | null> => {
       metaString("picture") ||
       null,
     mascot: resolveMascot(profile?.mascot),
-    status: roster?.status === "suspended" ? "suspended" : "active",
+    status,
+    role,
+    isAdmin: role === "admin" && status === "active",
     ...normalizeLocaleContext({
       tz: profile?.timezone,
       currency: profile?.currency,

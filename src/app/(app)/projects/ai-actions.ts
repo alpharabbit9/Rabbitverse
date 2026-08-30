@@ -28,7 +28,7 @@ import {
   type MilestoneSuggestion,
   type OpenMilestone,
 } from "@/lib/ai/project-plan";
-import { groqDailyBudget, parseLogLimit } from "@/lib/redis";
+import { groqDailyBudget, plannerLimit } from "@/lib/redis";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { recomputeProgress, type LogResult } from "./actions";
@@ -80,7 +80,7 @@ export async function generateMilestones(projectId: string): Promise<GenerateRes
     return { ok: true, milestones: demoMilestones(idea).milestones, demo: true, error: null };
   }
 
-  const gate = await parseLogLimit(user.id);
+  const gate = await plannerLimit(user.id);
   if (!gate.allowed) {
     return { ok: false, milestones: [], demo: false, error: "Too many requests — give it a minute." };
   }
@@ -199,7 +199,7 @@ export async function scanUpdateForMilestones(
     return { ok: true, matches, demo: true, error: null };
   }
 
-  const gate = await parseLogLimit(user.id);
+  const gate = await plannerLimit(user.id);
   if (!gate.allowed) {
     return { ok: false, matches: [], demo: false, error: "Too many requests — give it a minute." };
   }

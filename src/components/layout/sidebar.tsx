@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, use } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { NAV, SETTINGS_NAV, type NavItem } from "@/lib/nav";
+import { ADMIN_NAV, NAV, SETTINGS_NAV, type NavItem } from "@/lib/nav";
 import { Icon } from "@/components/icon";
 import { ThemeOrb } from "@/components/theme-orb";
 import { ProfileAvatar } from "@/components/layout/profile-avatar";
@@ -85,7 +85,12 @@ function ProfileChipFallback() {
   );
 }
 
-export function Sidebar({ profile }: { profile: Promise<ProfileChip> }) {
+/*
+  `isAdmin` arrives as a prop rather than being read here: the sidebar is a
+  client component with no access to the session, and the layout above has
+  already awaited it for the suspension gate.
+*/
+export function Sidebar({ profile, isAdmin = false }: { profile: Promise<ProfileChip>; isAdmin?: boolean }) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -105,6 +110,7 @@ export function Sidebar({ profile }: { profile: Promise<ProfileChip> }) {
           <NavLink key={item.href} item={item} active={isActive(item.href)} />
         ))}
         <div className="flex-1" />
+        {isAdmin && <NavLink item={ADMIN_NAV} active={isActive(ADMIN_NAV.href)} />}
         <NavLink item={SETTINGS_NAV} active={isActive(SETTINGS_NAV.href)} />
       </nav>
 

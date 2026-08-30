@@ -5,6 +5,7 @@ import {
   groqDailyBudget,
   isRedisConfigured,
   parseLogLimit,
+  plannerLimit,
   rateLimit,
   slidingWindowEstimate,
   transcribeLimit,
@@ -89,9 +90,15 @@ describe("no-op contract when Redis is unconfigured (fail open)", () => {
   it("the named limiters carry the plan's caps", async () => {
     expect((await parseLogLimit("user-1")).limit).toBe(20);
     expect((await transcribeLimit("user-1")).limit).toBe(30);
-    // Both still allow while unconfigured.
+    expect((await plannerLimit("user-1")).limit).toBe(20);
+    // All still allow while unconfigured.
     expect((await parseLogLimit("user-1")).allowed).toBe(true);
     expect((await transcribeLimit("user-1")).allowed).toBe(true);
+    expect((await plannerLimit("user-1")).allowed).toBe(true);
+  });
+
+  it("the planner limiter has its own bucket, distinct from parseLog", () => {
+    expect(windowKey("rl:planner", "user-1", 0)).not.toBe(windowKey("rl:parse", "user-1", 0));
   });
 
   it("groqDailyBudget passes and surfaces the configured ceiling", async () => {

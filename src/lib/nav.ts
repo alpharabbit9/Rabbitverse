@@ -17,6 +17,17 @@ export const NAV: NavItem[] = [
   { href: "/mental-health", label: "Mental Health", icon: "HeartPulse", section: "mental", accent: "var(--accent-orange)" },
 ];
 
+/**
+ * Only rendered for an active admin (`session.isAdmin`), and deliberately absent
+ * from `MOBILE_TABS` — five tabs is the design, and the panel is a desk job.
+ */
+export const ADMIN_NAV: NavItem = {
+  href: "/admin",
+  label: "Admin",
+  icon: "ShieldCheck",
+  accent: "var(--accent-gold)",
+};
+
 export const SETTINGS_NAV: NavItem = {
   href: "/settings",
   label: "Settings",

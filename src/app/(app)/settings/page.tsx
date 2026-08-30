@@ -10,6 +10,7 @@ import { RemindersCard } from "@/components/settings/reminders-card";
 import { TargetsCard } from "@/components/settings/targets-card";
 import { getTargets } from "@/lib/data/targets";
 import { DEFAULT_TARGETS } from "@/lib/targets";
+import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
 import { describeTimeZone } from "@/lib/locale";
 import { currencySymbol } from "@/lib/money";
@@ -46,7 +47,8 @@ export default async function SettingsPage() {
   const reminderTime = isSupabaseConfigured ? await getReminderTime() : "21:00";
   const targets = isSupabaseConfigured ? await getTargets() : DEFAULT_TARGETS;
   const { tz, currency } = await getLocaleContext();
-  const mascot = (await getSession())?.mascot ?? DEFAULT_MASCOT;
+  const session = await getSession();
+  const mascot = session?.mascot ?? DEFAULT_MASCOT;
   const categories = isSupabaseConfigured ? await getCategories() : sampleCategories;
 
   return (
@@ -150,6 +152,24 @@ export default async function SettingsPage() {
             </div>
           )}
         </Panel>
+
+        {/* Owner-only, and invisible to everyone else — the panel itself 404s
+            for a member, so this row is a shortcut, not the gate. */}
+        {session?.isAdmin && (
+          <Panel title="Admin" subtitle="Who else is here">
+            <Link
+              href="/admin"
+              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm transition-colors hover:border-border-strong hover:bg-card-hover"
+            >
+              <Icon name="ShieldCheck" size={18} style={{ color: "var(--accent-gold)" }} />
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">Open the admin panel</div>
+                <div className="text-xs text-fg-muted">Accounts, suspensions and the moderation trail. Counts only.</div>
+              </div>
+              <Icon name="ArrowRight" size={16} className="text-fg-muted" />
+            </Link>
+          </Panel>
+        )}
 
         <Panel title="Data">
           {isSupabaseConfigured ? (

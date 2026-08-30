@@ -219,6 +219,18 @@ export function transcribeLimit(userId: string, now?: number): Promise<RateLimit
   return rateLimit(userId, { limit: 30, windowSeconds: 86400, prefix: "rl:transcribe" }, now);
 }
 
+/**
+ * Per-user cap on the AI Project Planner — milestone generation and
+ * commit-vs-milestone matching (`projects/ai-actions.ts`). Its own `rl:planner`
+ * bucket on purpose: planning a project and logging a sentence in Quick-Add are
+ * unrelated actions a user does at different rates, so a busy logging hour must
+ * not lock the planner (and vice versa). Same 20/hour cap as `parseLog`; the
+ * global `groqDailyBudget` breaker still covers the shared key across both.
+ */
+export function plannerLimit(userId: string, now?: number): Promise<RateLimitResult> {
+  return rateLimit(userId, { limit: 20, windowSeconds: 3600, prefix: "rl:planner" }, now);
+}
+
 // ---- Global circuit breaker ------------------------------------------------
 
 export interface BudgetResult {

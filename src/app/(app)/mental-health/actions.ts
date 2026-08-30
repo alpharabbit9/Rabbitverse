@@ -55,8 +55,14 @@ export async function updateJournalEntry(_prev: LogResult, formData: FormData): 
   if (!mood || mood < 1 || mood > 5) return { ok: false, error: "Pick how your day felt (1–5)." };
   const body = ((formData.get("body") as string) || "").trim().slice(0, 2000) || null;
 
-  const { error } = await supabase.from("journal_entries").update({ mood, body }).eq("id", id);
+  const { data, error } = await supabase
+    .from("journal_entries")
+    .update({ mood, body })
+    .eq("id", id)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  // RLS lets a wrong or stale id match zero rows silently — surface that.
+  if (!data?.length) return { ok: false, error: "That reflection no longer exists." };
 
   revalidatePath("/mental-health");
   revalidatePath("/");
@@ -74,6 +80,8 @@ export async function deleteJournalEntry(_prev: LogResult, formData: FormData): 
   const id = (formData.get("id") as string) || "";
   if (!id) return { ok: false, error: "Missing entry." };
 
+  // Delete is idempotent — a wrong/stale id that matches no row (RLS included)
+  // is already in the desired state, so no zero-row guard here.
   const { error } = await supabase.from("journal_entries").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
 

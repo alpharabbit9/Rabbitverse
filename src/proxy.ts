@@ -51,6 +51,32 @@ export async function proxy(request: NextRequest) {
   // round-trip on every single request. It is enforced where entry actually
   // happens — `signInWithPassword`, `/auth/callback` — and again in
   // `(app)/layout.tsx`, which already reads the roster via `getSession()`.
+  //
+  // /admin is the one exception, and only because it is PATH-SCOPED: the roster
+  // read below runs on a handful of requests a day rather than on all of them,
+  // so the no-round-trip rule above still holds for every route a member uses.
+  // The check is duplicated in `(admin)/layout.tsx`, which remains the
+  // authoritative gate — this is a fast door in front of it, not a replacement.
+  //
+  // A non-admin is REWRITTEN, not redirected: there is no reason to teach
+  // anybody that /admin exists, so it simply 404s like any other bad URL.
+  // Rewriting to "/404" (a path with no route) is deliberate and verified —
+  // Next 16 serves the not-found page with a real 404 status for it, so this is
+  // NOT a stale Pages-Router artifact to "fix".
+  if (user && path.startsWith("/admin")) {
+    const { data: roster } = await supabase
+      .from("users")
+      .select("role, status")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // Mirrors the SQL `is_admin()`: a suspended admin is not an admin.
+    if (roster?.role !== "admin" || roster.status !== "active") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/404";
+      return NextResponse.rewrite(url, { status: 404 });
+    }
+  }
 
   return response;
 }

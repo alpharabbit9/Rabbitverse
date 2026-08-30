@@ -306,8 +306,14 @@ export async function updateCommit(_prev: LogResult, formData: FormData): Promis
   if (!logId) return { ok: false, error: "Missing update." };
   if (!note) return { ok: false, error: "An update can't be empty — delete it instead." };
 
-  const { error } = await supabase.from("project_logs").update({ note }).eq("id", logId);
+  const { data, error } = await supabase
+    .from("project_logs")
+    .update({ note })
+    .eq("id", logId)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  // RLS lets a wrong or stale id match zero rows without erroring — say so.
+  if (!data?.length) return { ok: false, error: "That update no longer exists." };
 
   if (projectId) revalidateProject(projectId);
   else revalidateAll();
@@ -323,6 +329,7 @@ export async function deleteCommit(_prev: LogResult, formData: FormData): Promis
   const projectId = (formData.get("project_id") as string) || "";
   if (!logId) return { ok: false, error: "Missing update." };
 
+  // Delete is idempotent — no zero-row guard (RLS non-match = already gone).
   const { error } = await supabase.from("project_logs").delete().eq("id", logId);
   if (error) return { ok: false, error: error.message };
 
@@ -343,8 +350,13 @@ export async function setProjectStatus(_prev: LogResult, formData: FormData): Pr
   if (!projectId) return { ok: false, error: "Missing project." };
   if (!VALID_STATUSES.has(status)) return { ok: false, error: "Invalid status." };
 
-  const { error } = await supabase.from("projects").update({ status }).eq("id", projectId);
+  const { data, error } = await supabase
+    .from("projects")
+    .update({ status })
+    .eq("id", projectId)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data?.length) return { ok: false, error: "That project no longer exists." };
 
   revalidateProject(projectId);
   return { ok: true, error: null };
@@ -363,8 +375,13 @@ export async function updateProjectTags(_prev: LogResult, formData: FormData): P
     ? tagsRaw.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 10)
     : [];
 
-  const { error } = await supabase.from("projects").update({ tags }).eq("id", projectId);
+  const { data, error } = await supabase
+    .from("projects")
+    .update({ tags })
+    .eq("id", projectId)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data?.length) return { ok: false, error: "That project no longer exists." };
 
   revalidateProject(projectId);
   return { ok: true, error: null };
@@ -386,11 +403,13 @@ export async function renameProject(_prev: LogResult, formData: FormData): Promi
   const targetDate = targetDateRaw === "" ? null : /^\d{4}-\d{2}-\d{2}$/.test(targetDateRaw) ? targetDateRaw : undefined;
   if (targetDate === undefined) return { ok: false, error: "That finish date isn't valid." };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("projects")
     .update({ name: name.slice(0, 120), goals, target_date: targetDate })
-    .eq("id", projectId);
+    .eq("id", projectId)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data?.length) return { ok: false, error: "That project no longer exists." };
 
   revalidateProject(projectId);
   return { ok: true, error: null };
@@ -408,6 +427,8 @@ export async function deleteProject(_prev: LogResult, formData: FormData): Promi
   const projectId = (formData.get("project_id") as string) || "";
   if (!projectId) return { ok: false, error: "Missing project." };
 
+  // Delete is idempotent, and the redirect lands on /projects either way — a
+  // wrong/stale id that matches nothing just means it is already gone.
   const { error } = await supabase.from("projects").delete().eq("id", projectId);
   if (error) return { ok: false, error: error.message };
 
