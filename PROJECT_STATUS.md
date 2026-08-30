@@ -44,7 +44,8 @@ Planner has its own `rl:planner` bucket, README / env drift fixed. Phase G's aut
 (tsc · eslint · `vitest` 225 · `next build`) and a static audit of every Phase G surface produced
 four fixes (see the top session-log entry). What's left for E is Upstash key provisioning; what's
 left for G is the human checklist (signup/OAuth/inbox/iOS/two-account RLS) that can't be automated.
-F, H, I unchanged.
+**Phase I (CI) is done** — `.github/workflows/ci.yml` runs `npm ci · lint · test · build` on every
+push to `main` and every PR. F and H unchanged.
 
 **Before that (V3.0) — all eight phases (A–H) are in the code.** Anyone can hold an account, pick
 their creature, talk to the AI box, edit or delete anything they logged, plan a project with AI-drafted
@@ -266,7 +267,13 @@ Dark by default, calm and premium, with a code-drawn **SVG rabbit mascot** that 
   can't be automated):** signup → email confirm → sign-in → sign-out (email + Google); password
   reset; voice on iOS Safari; two-account RLS isolation; suspension's three gates end-to-end; the
   full CRUD/export/range-persist walk against a real account.
-- ⬜ **H — Mascot art** · ⬜ **I — CI**
+- ⬜ **H — Mascot art**
+- ✅ **I — CI**: `.github/workflows/ci.yml` — one `verify` job on `ubuntu-latest`, Node 22, npm
+  cache; steps `npm ci` → `npm run lint` → `npm test` → `npm run build`. Triggers on push to `main`
+  and on every pull request; `concurrency` cancels superseded runs; `permissions: contents: read`.
+  The build needs no secrets — `src/lib/supabase/config.ts` falls back to demo mode when unset — and
+  is the real guard against a server-only module leaking into a client bundle. Green baseline at
+  commit time: eslint clean · vitest 225/225 · `next build` 24 routes.
 
 ### Beyond V2.0 (design-for, not building)
 - ⬜ 2.1 — AI reflections & advice (weekly summary over aggregates + target statuses)
@@ -303,8 +310,9 @@ open), `src/lib/supabase/admin.ts` (service role, one caller, write-only), and m
 `0007_admin.sql` + `0008_invites.sql` — **applied to the live DB 2026-08-30**; `SUPABASE_SERVICE_ROLE_KEY`
 set in Vercel; `alpharabbit74@gmail.com` promoted to admin. (Local `.env.local` still comments the
 service-role key out → local admin panel is read-only.)
-**Still not present:** Upstash keys, the reminders Edge Function + cron deploy, Higgsfield mascot art,
-CI. **Not yet exercised end-to-end:** the human Phase G checklist (see the roadmap).
+**Still not present:** Upstash keys, the reminders Edge Function + cron deploy, Higgsfield mascot
+art. **Now present (V4.0 Phase I):** `.github/workflows/ci.yml` — lint + test + build on push to
+`main` and every PR. **Not yet exercised end-to-end:** the human Phase G checklist (see the roadmap).
 
 ---
 
@@ -312,7 +320,28 @@ CI. **Not yet exercised end-to-end:** the human Phase G checklist (see the roadm
 
 > Newest first. Each entry: date · what changed · what's next.
 
-### 2026-08-30 (latest) — V4.0 Phase G: audit + four fixes; migration state corrected
+### 2026-08-30 (latest) — V4.0 Phase I: CI
+
+The repo had no `.github/` and no automation at all — 225 vitest tests and `npm run lint` only ever
+ran when someone remembered to. Phase I adds one workflow, `.github/workflows/ci.yml`:
+
+- **One job, `verify`, on `ubuntu-latest`** — `actions/checkout@v4`, `actions/setup-node@v4` (Node
+  22, `cache: npm`), then `npm ci` → `npm run lint` → `npm test` → `npm run build` as four named
+  steps so a failure points at the stage.
+- **Triggers:** push to `main` and every `pull_request`. A `concurrency` group keyed on the ref
+  cancels a superseded run; `permissions: contents: read` drops the default write token.
+- **No secrets.** `src/lib/supabase/config.ts` falls back to demo mode when `NEXT_PUBLIC_SUPABASE_*`
+  is unset, so `next build` runs clean without them — and the build is the real check that no
+  `server-only` module has leaked into a client bundle, the mistake the admin layer is most exposed
+  to. `NEXT_TELEMETRY_DISABLED=1` keeps the build quiet.
+- **Verified locally before commit:** `npm run lint` clean · `npm test` 225/225 · `npm run build`
+  clean (24 routes). YAML parse-checked.
+
+- **Next:** the two remaining V4.0 items are both infra/human, not code — E's Upstash key
+  provisioning, and the Phase G signed-in checklist (signup/OAuth/inbox/iOS/two-account RLS). F
+  (reminders deploy) and H (mascot art) unchanged. CI will start reporting on the next push to `main`.
+
+### 2026-08-30 — V4.0 Phase G: audit + four fixes; migration state corrected
 
 Phase G is the signed-in live pass — most of it (real signup, Google OAuth, an email inbox, an
 iPhone, two accounts for RLS isolation) can only be done by hand. This session did the parts that

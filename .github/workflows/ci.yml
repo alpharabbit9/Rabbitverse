@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch or PR makes an in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: lint · test · build
+    runs-on: ubuntu-latest
+
+    env:
+      # No prompt, no phone-home. The app builds in demo mode without secrets
+      # (src/lib/supabase/config.ts), so the build needs no Supabase env here.
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # `next build` is the real check that no server-only module leaked into a
+      # client bundle — the mistake the admin layer is most exposed to.
+      - name: Build
+        run: npm run build
