@@ -79,7 +79,7 @@ export function ExpensesView({
   return (
     <div className="space-y-6 sm:space-y-7">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
+        <h1 className="heading-display text-2xl font-bold">Expenses</h1>
         <p className="mt-1 text-sm text-fg-secondary">Where your money actually goes</p>
       </header>
 

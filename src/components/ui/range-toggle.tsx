@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
 import { DEFAULT_RANGE, RANGE_KEYS, isRangeKey, type RangeKey } from "@/lib/range";
 
 /*
@@ -75,18 +76,19 @@ export function useRange(): [RangeKey, (r: RangeKey) => void] {
 
 export function RangeToggle({ value, onChange }: { value: RangeKey; onChange: (r: RangeKey) => void }) {
   return (
-    <div className="inline-flex rounded-lg border border-border bg-card-hover/40 p-0.5" role="group" aria-label="Time range">
+    <div className="inline-flex rounded-full border border-border bg-card-hover/40 p-0.5" role="group" aria-label="Time range">
       {RANGE_KEYS.map((key) => (
-        <button
+        <Button
           key={key}
+          variant={value === key ? "primary" : "ghost"}
+          size="sm"
+          selected={value === key}
           onClick={() => onChange(key)}
-          aria-pressed={value === key}
-          className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-            value === key ? "bg-card-solid text-fg shadow-sm" : "text-fg-muted hover:text-fg-secondary"
-          }`}
+          className="[--rv-pad:2px]"
+          faceClassName="px-2.5 py-1 text-xs font-medium"
         >
           {key}
-        </button>
+        </Button>
       ))}
     </div>
   );

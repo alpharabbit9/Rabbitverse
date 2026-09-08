@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { MASCOTS, MASCOT_ORDER } from "@/components/mascot/registry";
 import { resolveMascot, type MascotSpecies } from "@/components/mascot/types";
 import { cn } from "@/lib/utils";
@@ -44,18 +45,16 @@ export function MascotCard({ initial }: { initial: string }) {
           const { name, Component, copy } = MASCOTS[species];
           const active = species === picked;
           return (
-            <button
+            // A tile, not a pill — the radius is overridden on both boxes so the
+            // mascot art still sits in a card while keeping the button's glass.
+            <Button
               key={species}
-              type="button"
+              block
+              selected={active}
               onClick={() => choose(species)}
               disabled={pending}
-              aria-pressed={active}
-              className={cn(
-                "group relative flex flex-col items-center gap-1 rounded-2xl border p-3 text-center transition-colors",
-                active
-                  ? "border-[var(--accent-purple)] bg-card-hover"
-                  : "border-border hover:border-border-strong hover:bg-card-hover/60",
-              )}
+              className="rounded-[1.4rem]"
+              faceClassName="flex-col gap-1 rounded-2xl p-3 text-center"
             >
               {active && (
                 <span className="absolute right-2 top-2 grid size-5 place-items-center rounded-full bg-[var(--accent-purple)]">
@@ -65,7 +64,7 @@ export function MascotCard({ initial }: { initial: string }) {
               <Component state="walking" size={84} glow={active} />
               <span className="text-sm font-semibold">{name}</span>
               <span className="text-[11px] leading-snug text-fg-muted">{copy.walking}</span>
-            </button>
+            </Button>
           );
         })}
       </div>

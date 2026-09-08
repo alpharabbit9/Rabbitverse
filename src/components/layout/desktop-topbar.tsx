@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { NAV } from "@/lib/nav";
 import { Icon } from "@/components/icon";
+import { Button, ButtonLink } from "@/components/ui/button";
 
 /**
  * Desktop-only top chrome: a section search, a notifications bell, and the
@@ -38,22 +38,20 @@ export function DesktopTopbar() {
           className="glass w-52 rounded-full py-2 pl-9 pr-3 text-sm outline-none transition-[width,border-color] focus:w-64 focus:border-border-strong"
         />
       </div>
-      <button
-        type="button"
+      <Button
+        size="icon"
+        hue="orange"
         onClick={() => toast("You're all caught up ✨", { description: "No new notifications." })}
         aria-label="Notifications"
-        className="glass relative grid size-10 place-items-center rounded-full text-fg-secondary transition-colors hover:text-fg"
+        className="relative"
       >
         <Icon name="Bell" size={18} />
-        <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-accent-orange ring-2 ring-bg" />
-      </button>
-      <Link
-        href="/quick-add"
-        className="flex items-center gap-2 rounded-full bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(139,92,246,0.7)] transition-opacity hover:opacity-90"
-      >
+        <span className="absolute right-1 top-1 size-2 rounded-full bg-accent-orange ring-2 ring-bg" />
+      </Button>
+      <ButtonLink href="/quick-add" variant="primary" size="lg">
         <Icon name="Plus" size={16} />
         Log Activity
-      </Link>
+      </ButtonLink>
     </div>
   );
 }

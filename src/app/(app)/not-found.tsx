@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ButtonLink } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
@@ -10,12 +10,9 @@ export default function NotFound() {
           Rabbit looked everywhere but couldn&apos;t find that page.
         </p>
       </div>
-      <Link
-        href="/"
-        className="rounded-xl border border-border bg-card-solid px-6 py-2.5 text-sm font-medium transition-colors hover:border-border-strong hover:bg-card-hover"
-      >
+      <ButtonLink href="/" size="lg" faceClassName="px-6">
         Back to overview
-      </Link>
+      </ButtonLink>
     </div>
   );
 }

@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 
 export function RowMenu({
   onEdit,
@@ -46,16 +47,16 @@ export function RowMenu({
 
   return (
     <div ref={ref} className="relative shrink-0">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="icon-sm"
         onClick={() => (open ? close() : setOpen(true))}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="grid size-7 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-card-hover hover:text-fg"
       >
         <Icon name="MoreHorizontal" size={16} />
-      </button>
+      </Button>
 
       {open && (
         <div
@@ -65,23 +66,31 @@ export function RowMenu({
           }`}
         >
           {onEdit && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              block
               role="menuitem"
+              className="[--rv-pad:2px]"
+              faceClassName="justify-start gap-2 px-2.5 py-2 text-sm"
               onClick={() => {
                 close();
                 onEdit();
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-fg-secondary transition-colors hover:bg-card-hover hover:text-fg"
             >
               <Icon name="Pencil" size={14} />
               {editLabel}
-            </button>
+            </Button>
           )}
           {onDelete && (
-            <button
-              type="button"
+            <Button
+              variant={confirming ? "primary" : "ghost"}
+              hue="rose"
+              size="sm"
+              block
               role="menuitem"
+              className="[--rv-pad:2px]"
+              faceClassName={`justify-start gap-2 px-2.5 py-2 text-sm ${confirming ? "" : "text-accent-rose"}`}
               onClick={() => {
                 if (!confirming) {
                   setConfirming(true);
@@ -90,13 +99,10 @@ export function RowMenu({
                 close();
                 onDelete();
               }}
-              className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
-                confirming ? "bg-accent-rose/15 text-accent-rose" : "text-fg-secondary hover:bg-card-hover hover:text-accent-rose"
-              }`}
             >
               <Icon name="Trash2" size={14} />
               {confirming ? "Confirm delete" : deleteLabel}
-            </button>
+            </Button>
           )}
         </div>
       )}

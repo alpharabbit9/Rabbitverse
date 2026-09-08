@@ -16,7 +16,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -124,25 +124,18 @@ function Dialog({
         )}
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-xl border border-border px-4 py-2 text-sm text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-          >
+          <Button variant="ghost" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!satisfied || pending}
+          </Button>
+          <Button
+            variant="primary"
+            hue={danger ? "rose" : "purple"}
+            disabled={!satisfied}
+            loading={pending}
             onClick={() => onConfirm(typed)}
-            className={cn(
-              "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-40",
-              danger ? "bg-accent-rose text-black" : "bg-fg text-bg",
-            )}
           >
-            {pending && <Icon name="Loader" size={14} className="animate-spin" />}
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

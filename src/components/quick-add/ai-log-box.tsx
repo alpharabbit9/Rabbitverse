@@ -14,6 +14,8 @@ import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
+import { GenerateButton } from "@/components/ui/generate-button";
 import { parseLog, saveIntents, transcribe } from "@/app/(app)/quick-add/ai-actions";
 import { type Dispatch, dispatchUnresolved } from "@/lib/ai/parse-log";
 import { cn } from "@/lib/utils";
@@ -235,14 +237,14 @@ export function AiLogBox({
         {!items && !recording && !transcribing && (
           <div className="flex flex-wrap gap-1.5">
             {examples.map((ex) => (
-              <button
+              <Button
                 key={ex}
-                type="button"
+                size="sm"
                 onClick={() => setSentence(ex)}
-                className="rounded-lg border border-border px-2.5 py-1 text-left text-[11px] text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+                faceClassName="px-2.5 py-1 text-left text-[11px] font-normal"
               >
                 {ex}
-              </button>
+              </Button>
             ))}
           </div>
         )}
@@ -276,21 +278,10 @@ export function AiLogBox({
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={stop}
-                      style={{ backgroundImage: "linear-gradient(90deg, var(--accent-purple), var(--accent-cyan))" }}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity"
-                    >
+                    <Button variant="primary" hue="cyan" onClick={stop} className="flex-1">
                       <Icon name="Square" size={14} /> Stop &amp; transcribe
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancel}
-                      className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-                    >
-                      Cancel
-                    </button>
+                    </Button>
+                    <Button onClick={cancel}>Cancel</Button>
                   </div>
                 </div>
               )}
@@ -305,32 +296,26 @@ export function AiLogBox({
               className="flex gap-2"
             >
               {micAvailable && (
-                <button
-                  type="button"
+                <Button
+                  size="icon"
                   onClick={onMic}
                   disabled={parsing || saving}
                   aria-label="Record voice input"
                   title="Speak instead of typing"
-                  className="grid size-[46px] shrink-0 place-items-center rounded-xl border border-border text-fg-secondary transition-colors hover:border-border-strong hover:text-fg disabled:opacity-60"
+                  faceClassName="size-[42px]"
                 >
                   <Icon name="Mic" size={18} />
-                </button>
+                </Button>
               )}
-              <button
-                type="button"
+              <GenerateButton
+                label="Log it"
+                activeLabel="Reading…"
+                generating={parsing}
+                size="lg"
                 onClick={parse}
-                disabled={!sentence.trim() || parsing || saving}
-                style={{ backgroundImage: "linear-gradient(90deg, var(--accent-purple), var(--accent-cyan))" }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-              >
-                {parsing ? (
-                  "Reading…"
-                ) : (
-                  <>
-                    <Icon name="Sparkles" size={16} /> Log it
-                  </>
-                )}
-              </button>
+                disabled={!sentence.trim() || saving}
+                className="flex-1"
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -349,13 +334,9 @@ export function AiLogBox({
                 <p className="text-xs font-medium text-fg-secondary">
                   Here&apos;s what Rabbit understood — fix anything, then save.
                 </p>
-                <button
-                  type="button"
-                  onClick={reset}
-                  className="shrink-0 text-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline"
-                >
+                <Button variant="ghost" size="sm" onClick={reset} className="shrink-0">
                   Start over
-                </button>
+                </Button>
               </div>
 
               {offline && (
@@ -377,12 +358,14 @@ export function AiLogBox({
                 />
               ))}
 
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                hue="mint"
+                size="lg"
+                block
                 onClick={save}
-                disabled={saving || blocked}
-                style={{ backgroundImage: "linear-gradient(90deg, var(--accent-mint), var(--accent-blue))" }}
-                className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
+                disabled={blocked}
+                loading={saving}
               >
                 {saving ? (
                   "Saving…"
@@ -391,7 +374,7 @@ export function AiLogBox({
                     <Icon name="Check" size={16} /> Save all ({items.length})
                   </>
                 )}
-              </button>
+              </Button>
 
               {blocked && <p className="text-center text-[11px] text-fg-muted">Fill the highlighted fields to save.</p>}
               {demo && !offline && <p className="text-center text-[11px] text-fg-muted">Demo mode — nothing is written.</p>}
@@ -440,14 +423,16 @@ function Chip({
           {style.label}
         </span>
         <span className="truncate text-xs text-fg-secondary">{d.summary}</span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          hue="rose"
           onClick={onRemove}
           aria-label={`Remove ${style.label}`}
-          className="ml-auto grid size-6 shrink-0 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-card-hover hover:text-fg"
+          className="ml-auto"
         >
           <Icon name="X" size={14} />
-        </button>
+        </Button>
       </div>
 
       {d.kind === "expense" && (
@@ -502,19 +487,16 @@ function Chip({
               { v: "true", label: "Did it" },
               { v: "false", label: "Rest day" },
             ].map((o) => (
-              <button
+              <Button
                 key={o.v}
-                type="button"
+                size="sm"
+                block
+                selected={(d.fields.done ?? "true") === o.v}
                 onClick={() => onChange({ done: o.v })}
-                className={cn(
-                  "rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
-                  (d.fields.done ?? "true") === o.v
-                    ? "border-border-strong bg-card-hover text-fg"
-                    : "border-border text-fg-secondary hover:text-fg",
-                )}
+                faceClassName="px-3 py-2 text-xs font-medium"
               >
                 {o.label}
-              </button>
+              </Button>
             ))}
           </div>
           <input
@@ -577,18 +559,18 @@ function Chip({
               { v: "4", e: "😊" },
               { v: "5", e: "🤩" },
             ].map((m) => (
-              <button
+              <Button
                 key={m.v}
-                type="button"
+                size="sm"
+                block
+                hue="orange"
+                selected={d.fields.mood === m.v}
                 onClick={() => onChange({ mood: m.v })}
                 aria-label={`Mood ${m.v} of 5`}
-                className={cn(
-                  "rounded-xl border py-1.5 text-lg transition-colors",
-                  d.fields.mood === m.v ? "border-border-strong bg-card-hover" : "border-border hover:bg-card-hover/50",
-                )}
+                faceClassName="px-0 py-1.5 text-lg"
               >
                 {m.e}
-              </button>
+              </Button>
             ))}
           </div>
           <DayPick
@@ -673,17 +655,16 @@ function DayPick({
         { v: today, label: "Today" },
         { v: yesterday, label: "Yesterday" },
       ].map((o) => (
-        <button
+        <Button
           key={o.v}
-          type="button"
+          size="sm"
+          block
+          selected={value === o.v}
           onClick={() => onPick(o.v)}
-          className={cn(
-            "rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
-            value === o.v ? "border-border-strong bg-card-hover text-fg" : "border-border text-fg-secondary hover:text-fg",
-          )}
+          faceClassName="px-3 py-2 text-xs font-medium"
         >
           {o.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

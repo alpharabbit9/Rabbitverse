@@ -52,6 +52,8 @@ export function shapeProjects(rows: Record<string, unknown>[] | null): Project[]
     const s = String(p.status ?? "ongoing");
     const status: Project["status"] = s === "completed" ? "completed" : s === "planned" ? "planned" : "ongoing";
     const rawTags = Array.isArray(p.tags) ? (p.tags as unknown[]).map(String) : [];
+    const keyFeatures = Array.isArray(p.key_features) ? (p.key_features as unknown[]).map(String) : [];
+    const problems = Array.isArray(p.problems) ? (p.problems as unknown[]).map(String) : [];
     return {
       id: String(p.id),
       name: String(p.name),
@@ -64,6 +66,12 @@ export function shapeProjects(rows: Record<string, unknown>[] | null): Project[]
       startDate: String(p.start_date),
       targetDate: p.target_date ? String(p.target_date) : undefined,
       tags: rawTags.length ? rawTags : undefined,
+      logoUrl: p.logo_url ? String(p.logo_url) : undefined,
+      idea: p.idea ? String(p.idea) : undefined,
+      keyFeatures: keyFeatures.length ? keyFeatures : undefined,
+      problems: problems.length ? problems : undefined,
+      category: p.category ? String(p.category) : undefined,
+      type: p.type ? String(p.type) : undefined,
     };
   });
 }

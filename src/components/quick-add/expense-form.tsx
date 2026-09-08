@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { useCurrencySymbol } from "@/components/locale-provider";
 
 type LogResult = { ok: boolean; error: string | null };
@@ -76,7 +77,9 @@ export function ExpenseForm({
         <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Category</label>
         <div className="grid grid-cols-3 gap-2">
           {categories.map((c, i) => (
-            <label key={c.id} className="cursor-pointer">
+            // A radio wearing the button's glass — see the same pattern in
+            // `quick-add-hub.tsx`.
+            <label key={c.id} className="rv-btn cursor-pointer [--rv-pad:3px]">
               <input
                 type="radio"
                 name="category_id"
@@ -84,7 +87,7 @@ export function ExpenseForm({
                 defaultChecked={initial ? c.id === initial.categoryId : i === 0}
                 className="peer sr-only"
               />
-              <span className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-2 py-2 text-xs transition-colors peer-checked:border-border-strong peer-checked:bg-card-hover">
+              <span className="rv-btn-face gap-1.5 px-2 py-2 text-xs peer-checked:border-border-strong peer-checked:bg-card-hover peer-checked:text-fg">
                 <Icon name={c.icon} size={14} style={{ color: c.color }} />
                 {c.name}
               </span>
@@ -121,22 +124,14 @@ export function ExpenseForm({
 
       <div className="flex gap-2">
         {editing && (
-          <button
-            type="button"
-            onClick={() => onDone?.()}
-            className="rounded-xl border border-border px-4 py-3 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-          >
+          <Button size="lg" onClick={() => onDone?.()} faceClassName="py-3">
             Cancel
-          </button>
+          </Button>
         )}
-        <button
-          type="submit"
-          disabled={pending}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-        >
+        <Button type="submit" variant="primary" size="lg" loading={pending} className="flex-1" faceClassName="py-3">
           <Icon name={editing ? "Check" : "Plus"} size={16} />
           {pending ? "Saving…" : editing ? "Save changes" : "Log expense"}
-        </button>
+        </Button>
       </div>
     </form>
   );

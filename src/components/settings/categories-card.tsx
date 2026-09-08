@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { RowMenu } from "@/components/ui/row-menu";
 import {
   CATEGORY_COLORS,
@@ -91,39 +92,26 @@ function CategoryEditor({
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Icon">
         {CATEGORY_ICONS.map((name) => (
-          <button
+          <Button
             key={name}
-            type="button"
+            size="icon-sm"
+            selected={draft.icon === name}
             onClick={() => setDraft({ ...draft, icon: name })}
             aria-label={name}
-            aria-pressed={draft.icon === name}
-            className={cn(
-              "grid size-8 place-items-center rounded-lg border transition-colors",
-              draft.icon === name ? "border-border-strong bg-card-hover" : "border-border hover:bg-card-hover/60",
-            )}
           >
             <Icon name={name} size={15} style={{ color: draft.color }} />
-          </button>
+          </Button>
         ))}
       </div>
 
       <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={pending || !draft.name.trim()}
-          className="rounded-xl border border-border bg-card-solid px-4 py-2 text-sm font-medium transition-colors hover:border-border-strong hover:bg-card-hover disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" disabled={!draft.name.trim()} loading={pending}>
           {submitLabel}
-        </button>
+        </Button>
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={pending}
-            className="rounded-xl px-4 py-2 text-sm text-fg-secondary transition-colors hover:text-fg"
-          >
+          <Button variant="ghost" onClick={onCancel} disabled={pending}>
             Cancel
-          </button>
+          </Button>
         )}
       </div>
     </form>
@@ -231,14 +219,10 @@ export function CategoriesCard({ categories }: { categories: ExpenseCategory[] }
           submitLabel="Add category"
         />
       ) : (
-        <button
-          type="button"
-          onClick={startAdd}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2.5 text-sm text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-        >
+        <Button variant="dashed" block onClick={startAdd} faceClassName="py-2.5">
           <Icon name="Plus" size={15} />
           New category
-        </button>
+        </Button>
       )}
 
       <p className="text-xs text-fg-muted">

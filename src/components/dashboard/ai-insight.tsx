@@ -17,7 +17,7 @@ export function AIInsight() {
           <span className="absolute inset-0 rounded-lg" style={{ boxShadow: "0 0 18px -2px var(--accent-purple)" }} />
           <Icon name="Sparkles" size={15} style={{ color: "var(--accent-purple)" }} />
         </span>
-        <h3 className="font-semibold">AI Insight</h3>
+        <h3 className="heading-display text-[17px] font-semibold">AI Insight</h3>
         <span className="ml-auto rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-fg-muted">v2</span>
       </div>
 

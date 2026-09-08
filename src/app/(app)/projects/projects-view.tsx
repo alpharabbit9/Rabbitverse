@@ -4,12 +4,32 @@ import { useState } from "react";
 import Link from "next/link";
 import type { DayActivity, Project } from "@/lib/types";
 import type { TargetStatus } from "@/lib/targets";
-import { TargetBadge, TargetWarnings } from "@/components/dashboard/target-warning";
+import { TargetWarnings } from "@/components/dashboard/target-warning";
 import { Panel } from "@/components/dashboard/panel";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
-import { Ring } from "@/components/ui/ring";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
-import { NewProjectForm } from "./project-forms";
+import { ProjectCard, type ProjectCardData, type ProjectCardStatus } from "@/components/projects/card";
+
+/**
+ * The "add one" tile. Creating a project is a whole page now (/projects/new):
+ * the AI blueprint, the milestone list and the logo need more room than a card
+ * in a grid, so this is a doorway rather than an inline form.
+ */
+function NewProjectTile() {
+  return (
+    <Link
+      href="/projects/new"
+      className="glass group flex min-h-[7rem] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-4 py-6 text-center transition-colors hover:border-accent-purple/60"
+    >
+      <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-accent-purple to-accent-blue text-white transition-transform group-hover:scale-105">
+        <Icon name="Plus" size={17} />
+      </span>
+      <span className="text-sm font-medium text-fg-secondary transition-colors group-hover:text-fg">New project</span>
+      <span className="text-xs text-fg-muted">Describe it — AI drafts the plan</span>
+    </Link>
+  );
+}
 
 function progressPct(p: Project): number {
   if (p.tasks && p.tasks.length) {
@@ -18,11 +38,29 @@ function progressPct(p: Project): number {
   return Math.min(100, Math.round((p.current / Math.max(1, p.targetValue)) * 100));
 }
 
-function progressMeta(p: Project): string {
-  if (p.tasks && p.tasks.length) {
-    return `${p.tasks.filter((t) => t.done).length}/${p.tasks.length} tasks`;
-  }
-  return `${Math.round(p.current).toLocaleString()} / ${p.targetValue.toLocaleString()} ${p.targetUnit}`;
+/** Domain status → the card kit's wider status vocabulary. */
+const CARD_STATUS: Record<Project["status"], ProjectCardStatus> = {
+  planned: "planned",
+  ongoing: "in_progress",
+  completed: "completed",
+};
+
+/**
+ * Adapt the domain `Project` to the card kit's presentation shape. This app is
+ * single-user with no logos, subtitles or teams, so those fields stay empty and
+ * the card falls back to a monogram and drops the team row. Tags carry a generic
+ * icon — the shared registry sparkles anything it doesn't recognise.
+ */
+function toCardData(p: Project): ProjectCardData {
+  return {
+    id: p.id,
+    name: p.name,
+    status: CARD_STATUS[p.status],
+    progress: progressPct(p),
+    daysLogged: p.daysWorked,
+    tags: p.tags?.map((name) => ({ name, icon: "Tag" })),
+    description: p.description,
+  };
 }
 
 function TagChips({ tags }: { tags?: string[] }) {
@@ -35,51 +73,6 @@ function TagChips({ tags }: { tags?: string[] }) {
         </span>
       ))}
     </div>
-  );
-}
-
-function ProjectCard({ p, status }: { p: Project; status?: TargetStatus }) {
-  const pct = progressPct(p);
-  const isPlanned = p.status === "planned";
-
-  return (
-    <Link
-      href={`/projects/${p.id}`}
-      className="glass group flex flex-col gap-3 rounded-2xl p-5 transition-colors hover:border-border-strong"
-    >
-      {status && status.level !== "ok" && (
-        <TargetBadge
-          level={status.level}
-          label={status.level === "over" ? "Overdue" : "Behind pace"}
-          className="self-start"
-        />
-      )}
-      <div className="flex items-center gap-4">
-        <Ring
-          value={pct}
-          size={84}
-          stroke={8}
-          from={isPlanned ? "var(--fg-muted)" : "var(--accent-blue)"}
-          to={isPlanned ? "var(--fg-muted)" : "var(--accent-cyan)"}
-          id={p.id}
-        >
-          <span className="text-sm font-bold">{pct}%</span>
-        </Ring>
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold">{p.name}</div>
-          <div className="text-xs text-fg-muted">{isPlanned ? "Not started" : progressMeta(p)}</div>
-          {!isPlanned && p.daysWorked != null && (
-            <div className="mt-1 flex items-center gap-1 text-xs text-fg-secondary">
-              <Icon name="Flame" size={12} style={{ color: "var(--accent-orange)" }} />
-              {p.daysWorked} day{p.daysWorked === 1 ? "" : "s"} logged
-            </div>
-          )}
-        </div>
-        <Icon name="ChevronRight" size={16} className="shrink-0 text-fg-muted transition-transform group-hover:translate-x-0.5" />
-      </div>
-      <TagChips tags={p.tags} />
-      {p.description && <p className="truncate text-xs text-fg-muted">{p.description}</p>}
-    </Link>
   );
 }
 
@@ -108,8 +101,6 @@ export function ProjectsView({
   const ongoing = filtered.filter((p) => p.status === "ongoing");
   const completed = filtered.filter((p) => p.status === "completed");
 
-  const statusFor = new Map(statuses.map((s) => [s.id, s]));
-
   const counts = {
     planned: projects.filter((p) => p.status === "planned").length,
     ongoing: projects.filter((p) => p.status === "ongoing").length,
@@ -119,7 +110,7 @@ export function ProjectsView({
   return (
     <div className="space-y-6 sm:space-y-7">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
+        <h1 className="heading-display text-2xl font-bold">Projects</h1>
         <p className="mt-1 text-sm text-fg-secondary">
           {counts.ongoing} in progress
           {counts.planned > 0 && ` · ${counts.planned} planned`}
@@ -132,24 +123,26 @@ export function ProjectsView({
 
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          <button
+          <Button
+            size="sm"
+            hue="cyan"
+            selected={!tagFilter}
             onClick={() => setTagFilter(null)}
-            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-              !tagFilter ? "bg-accent-blue/20 text-accent-cyan" : "bg-card-hover text-fg-secondary hover:text-fg"
-            }`}
+            faceClassName="px-2.5 py-1 text-xs font-medium"
           >
             All
-          </button>
+          </Button>
           {allTags.map((tag) => (
-            <button
+            <Button
               key={tag}
+              size="sm"
+              hue="cyan"
+              selected={tagFilter === tag}
               onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                tagFilter === tag ? "bg-accent-blue/20 text-accent-cyan" : "bg-card-hover text-fg-secondary hover:text-fg"
-              }`}
+              faceClassName="px-2.5 py-1 text-xs font-medium"
             >
               {tag}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -160,11 +153,11 @@ export function ProjectsView({
           {(planned.length > 0 || completed.length > 0) && (
             <h2 className="mb-3 text-sm font-semibold text-fg-secondary">In progress</h2>
           )}
-          <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
             {ongoing.map((p) => (
-              <ProjectCard key={p.id} p={p} status={statusFor.get(`project-${p.id}`)} />
+              <ProjectCard key={p.id} project={toCardData(p)} />
             ))}
-            {canLog && <NewProjectForm />}
+            {canLog && <NewProjectTile />}
           </div>
           {canLog && ongoing.length === 0 && !tagFilter && (
             <p className="mt-3 text-center text-sm text-fg-muted">No active projects yet — create one above to start tracking.</p>
@@ -176,9 +169,9 @@ export function ProjectsView({
       {planned.length > 0 && (
         <div>
           <h2 className="mb-3 text-sm font-semibold text-fg-secondary">Planned</h2>
-          <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
             {planned.map((p) => (
-              <ProjectCard key={p.id} p={p} />
+              <ProjectCard key={p.id} project={toCardData(p)} />
             ))}
           </div>
         </div>

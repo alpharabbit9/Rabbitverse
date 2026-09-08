@@ -6,6 +6,7 @@ import { Panel } from "@/components/dashboard/panel";
 import { ThemeOrb } from "@/components/theme-orb";
 import { Icon } from "@/components/icon";
 import { ProfileAvatar } from "@/components/layout/profile-avatar";
+import { Button } from "@/components/ui/button";
 import { RemindersCard } from "@/components/settings/reminders-card";
 import { TargetsCard } from "@/components/settings/targets-card";
 import { getTargets } from "@/lib/data/targets";
@@ -54,7 +55,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <h1 className="heading-display text-2xl font-bold">Settings</h1>
         <p className="mt-1 text-sm text-fg-secondary">Personalize your Rabbit Verse</p>
       </header>
 
@@ -183,9 +184,9 @@ export default async function SettingsPage() {
               </div>
               <ExportCard />
               <form action={signOut}>
-                <button type="submit" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg">
+                <Button type="submit" hue="rose" block>
                   Sign out
-                </button>
+                </Button>
               </form>
             </div>
           ) : (

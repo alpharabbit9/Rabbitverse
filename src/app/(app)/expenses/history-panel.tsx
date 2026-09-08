@@ -5,6 +5,7 @@ import { shortDate, weekdayShort } from "@/lib/dates";
 import { filterExpenses, groupByDay, inMonth, monthLabel, monthOf, shiftMonth, totalOf } from "@/lib/history";
 import type { Expense, ExpenseCategory } from "@/lib/types";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { useMoney } from "@/components/locale-provider";
 import { Panel } from "@/components/dashboard/panel";
 import { fetchMonthExpenses } from "./actions";
@@ -78,23 +79,25 @@ export function HistoryPanel({
     <Panel title="History" subtitle={`${monthLabel(month)} · ${money(totalOf(filtered))}`}>
       <div className="mb-4 space-y-3">
         <div className="flex items-center justify-between">
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => goToMonth(shiftMonth(month, -1))}
             disabled={!canGoBack}
-            className="rounded-lg p-1.5 text-fg-secondary transition-colors hover:bg-card-hover hover:text-fg disabled:opacity-30"
             aria-label="Previous month"
           >
             <Icon name="ChevronLeft" size={18} />
-          </button>
+          </Button>
           <span className="text-sm font-semibold">{monthLabel(month)}</span>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => goToMonth(shiftMonth(month, 1))}
             disabled={!canGoForward}
-            className="rounded-lg p-1.5 text-fg-secondary transition-colors hover:bg-card-hover hover:text-fg disabled:opacity-30"
             aria-label="Next month"
           >
             <Icon name="ChevronRight" size={18} />
-          </button>
+          </Button>
         </div>
         <div className="flex gap-2">
           <select

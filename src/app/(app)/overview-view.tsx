@@ -199,7 +199,7 @@ export function OverviewView(p: OverviewViewProps) {
         <div className="glass flex min-w-0 items-center gap-4 rounded-2xl p-5">
           <Ring value={p.score} size={104} stroke={9}>
             <div className="text-center">
-              <div className="text-2xl font-bold tabular-nums">{p.score}</div>
+              <div className="number-display text-2xl font-bold">{p.score}</div>
               <div className="text-[10px] font-medium" style={{ color: p.scoreMeta.tone }}>
                 {p.scoreMeta.label}
               </div>

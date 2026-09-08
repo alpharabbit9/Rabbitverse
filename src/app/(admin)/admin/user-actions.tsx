@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { describeCounts, totalRows } from "@/lib/admin/format";
 import { canChangeRole, canChangeStatus, canDeleteUser } from "@/lib/admin/guards";
 import type { AdminUserRow } from "@/lib/admin/types";
@@ -36,8 +37,8 @@ interface Props {
   canWrite: boolean;
 }
 
-const itemCls =
-  "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40";
+/** One menu row's face — the glass and the halo come from <Button variant="ghost"/>. */
+const itemCls = "justify-start gap-2 px-2.5 py-2 text-left text-sm font-normal";
 
 export function UserActions({ row, actorId, adminCount, canWrite }: Props) {
   const router = useRouter();
@@ -85,24 +86,27 @@ export function UserActions({ row, actorId, adminCount, canWrite }: Props) {
 
   return (
     <div ref={ref} className="relative shrink-0">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="icon-sm"
         onClick={() => setOpen((v) => !v)}
         aria-label={`Actions for ${label}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="grid size-7 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-card-hover hover:text-fg"
       >
         <Icon name="MoreHorizontal" size={16} />
-      </button>
+      </Button>
 
       {open && (
         <div
           role="menu"
           className="absolute right-0 z-20 mt-1 min-w-[13rem] overflow-hidden rounded-xl border border-border bg-card-solid p-1 shadow-lg"
         >
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            block
+            hue={row.status === "active" ? "rose" : "mint"}
             role="menuitem"
             disabled={Boolean(statusRefusal)}
             title={statusRefusal || undefined}
@@ -110,19 +114,18 @@ export function UserActions({ row, actorId, adminCount, canWrite }: Props) {
               setOpen(false);
               setDialog("status");
             }}
-            className={cn(
-              itemCls,
-              row.status === "active"
-                ? "text-fg-secondary hover:bg-card-hover hover:text-accent-rose"
-                : "text-fg-secondary hover:bg-card-hover hover:text-fg",
-            )}
+            className="[--rv-pad:2px]"
+            faceClassName={cn(itemCls, row.status === "active" && "text-accent-rose")}
           >
             <Icon name={row.status === "active" ? "UserX" : "UserCheck"} size={14} />
             {row.status === "active" ? "Suspend account" : "Reactivate account"}
-          </button>
+          </Button>
 
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            block
+            hue="gold"
             role="menuitem"
             disabled={Boolean(roleRefusal)}
             title={roleRefusal || undefined}
@@ -130,14 +133,18 @@ export function UserActions({ row, actorId, adminCount, canWrite }: Props) {
               setOpen(false);
               setDialog("role");
             }}
-            className={cn(itemCls, "text-fg-secondary hover:bg-card-hover hover:text-fg")}
+            className="[--rv-pad:2px]"
+            faceClassName={itemCls}
           >
             <Icon name={row.role === "admin" ? "ShieldOff" : "ShieldCheck"} size={14} />
             {row.role === "admin" ? "Remove admin" : "Make admin"}
-          </button>
+          </Button>
 
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            block
+            hue="blue"
             role="menuitem"
             disabled={Boolean(resetRefusal)}
             title={resetRefusal || undefined}
@@ -145,17 +152,21 @@ export function UserActions({ row, actorId, adminCount, canWrite }: Props) {
               setOpen(false);
               setDialog("reset");
             }}
-            className={cn(itemCls, "text-fg-secondary hover:bg-card-hover hover:text-fg")}
+            className="[--rv-pad:2px]"
+            faceClassName={itemCls}
           >
             <Icon name="KeyRound" size={14} />
             Send password reset
-          </button>
+          </Button>
 
           {/* The one item you cannot undo, fenced off from the three you can. */}
           <div className="my-1 h-px bg-border" />
 
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            block
+            hue="rose"
             role="menuitem"
             disabled={Boolean(deleteRefusal)}
             title={deleteRefusal || undefined}
@@ -163,11 +174,12 @@ export function UserActions({ row, actorId, adminCount, canWrite }: Props) {
               setOpen(false);
               setDialog("delete");
             }}
-            className={cn(itemCls, "text-accent-rose hover:bg-accent-rose/10")}
+            className="[--rv-pad:2px]"
+            faceClassName={cn(itemCls, "text-accent-rose")}
           >
             <Icon name="Trash2" size={14} />
             Delete account
-          </button>
+          </Button>
         </div>
       )}
 

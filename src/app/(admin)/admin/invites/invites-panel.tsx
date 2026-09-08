@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeDeadline, pageRangeLabel, relativeDay } from "@/lib/admin/format";
 import {
@@ -172,15 +173,9 @@ export function InvitesPanel({ rows, total, offset, page, today, origin, canWrit
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={submit}
-            disabled={disabled}
-            className="flex items-center gap-2 rounded-xl bg-fg px-4 py-2 text-sm font-medium text-bg transition-opacity disabled:opacity-40"
-          >
-            {pending && <Icon name="Loader" size={14} className="animate-spin" />}
+          <Button variant="primary" onClick={submit} disabled={disabled} loading={pending}>
             Create invite
-          </button>
+          </Button>
           {maxUses > 1 && (
             <span className="text-xs text-fg-muted">
               A {maxUses}-use code is shareable by accident — whoever you send it to can pass it on {maxUses - 1}{" "}
@@ -195,28 +190,15 @@ export function InvitesPanel({ rows, total, offset, page, today, origin, canWrit
             <Icon name="Ticket" size={16} style={{ color: "var(--accent-mint)" }} />
             <code className="font-mono text-base font-semibold tracking-wider">{fresh}</code>
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => copy(fresh, "Code")}
-                className="rounded-lg border border-border px-2.5 py-1.5 text-xs transition-colors hover:border-border-strong hover:text-fg"
-              >
+              <Button size="sm" onClick={() => copy(fresh, "Code")} faceClassName="px-2.5 py-1.5 text-xs font-normal">
                 Copy code
-              </button>
-              <button
-                type="button"
-                onClick={() => copy(inviteLink(origin, fresh), "Link")}
-                className="rounded-lg border border-border px-2.5 py-1.5 text-xs transition-colors hover:border-border-strong hover:text-fg"
-              >
+              </Button>
+              <Button size="sm" onClick={() => copy(inviteLink(origin, fresh), "Link")} faceClassName="px-2.5 py-1.5 text-xs font-normal">
                 Copy link
-              </button>
-              <button
-                type="button"
-                onClick={() => setFresh(null)}
-                aria-label="Dismiss"
-                className="text-fg-muted transition-colors hover:text-fg"
-              >
+              </Button>
+              <Button variant="ghost" size="icon-sm" hue="rose" onClick={() => setFresh(null)} aria-label="Dismiss">
                 <Icon name="X" size={14} />
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -277,17 +259,19 @@ export function InvitesPanel({ rows, total, offset, page, today, origin, canWrit
                         {invite.createdAt ? relativeDay(invite.createdAt.slice(0, 10), today) : "—"}
                       </td>
                       <td className="whitespace-nowrap px-2 py-2.5 text-right">
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => copy(inviteLink(origin, invite.code), "Link")}
                           title="Copy the /signup link with this code prefilled"
                           aria-label={`Copy the link for ${invite.code}`}
-                          className="rounded-lg p-1.5 text-fg-muted transition-colors hover:bg-card-hover hover:text-fg"
                         >
                           <Icon name="Copy" size={14} />
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          hue="rose"
                           disabled={!canWrite || status === "revoked"}
                           title={
                             !canWrite
@@ -298,10 +282,9 @@ export function InvitesPanel({ rows, total, offset, page, today, origin, canWrit
                           }
                           onClick={() => setRevoking(invite)}
                           aria-label={`Revoke ${invite.code}`}
-                          className="rounded-lg p-1.5 text-fg-muted transition-colors hover:bg-card-hover hover:text-accent-rose disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-fg-muted"
                         >
                           <Icon name="Ban" size={14} />
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   );

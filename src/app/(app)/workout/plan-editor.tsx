@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { WEEKDAYS } from "@/lib/dates";
 import type { WorkoutPlanDay } from "@/lib/types";
 import { saveWorkoutPlanDay, type LogResult } from "./actions";
@@ -74,21 +75,12 @@ export function PlanEditor({ plan, todayWeekday }: { plan: WorkoutPlanDay[]; tod
                   className={inputCls}
                 />
                 <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={pending}
-                    className="rounded-lg border border-border bg-card-solid px-3 py-1.5 text-sm font-medium transition-colors hover:border-border-strong hover:bg-card-hover disabled:opacity-50"
-                  >
+                  <Button type="submit" variant="primary" size="sm" loading={pending} faceClassName="px-3 py-1.5 text-sm">
                     Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(null)}
-                    disabled={pending}
-                    className="rounded-lg px-3 py-1.5 text-sm text-fg-secondary transition-colors hover:text-fg"
-                  >
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditing(null)} disabled={pending} faceClassName="px-3 py-1.5 text-sm">
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
             </li>
@@ -97,12 +89,14 @@ export function PlanEditor({ plan, todayWeekday }: { plan: WorkoutPlanDay[]; tod
 
         return (
           <li key={weekday}>
-            <button
-              type="button"
+            <Button
+              block
+              // Lit because it is today, not because it is switched on — so the
+              // glow stays and `aria-pressed` does not.
+              selected={isToday}
+              aria-pressed={undefined}
               onClick={() => setEditing(weekday)}
-              className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-colors hover:border-border-strong hover:bg-card-hover/60 ${
-                isToday ? "border-border-strong bg-card-hover/40" : "border-border"
-              }`}
+              faceClassName="justify-between gap-2 px-3 py-2 text-left text-sm font-normal"
             >
               <span className="w-9 shrink-0 font-medium">{name}</span>
               <span className="min-w-0 flex-1 truncate text-fg-secondary">
@@ -110,7 +104,7 @@ export function PlanEditor({ plan, todayWeekday }: { plan: WorkoutPlanDay[]; tod
                 {day?.focus && <span className="text-fg-muted"> · {day.focus}</span>}
               </span>
               <Icon name="Pencil" size={13} className="shrink-0 text-fg-muted" />
-            </button>
+            </Button>
           </li>
         );
       })}

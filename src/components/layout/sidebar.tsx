@@ -100,7 +100,7 @@ export function Sidebar({ profile, isAdmin = false }: { profile: Promise<Profile
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-mark.png" alt="Rabbit Verse" className="size-11 rounded-2xl object-cover shadow-[0_6px_18px_-6px_rgba(91,124,250,0.55)] ring-1 ring-white/10" />
         <div className="leading-tight">
-          <div className="font-display text-[19px] font-semibold tracking-tight">Rabbit Verse</div>
+          <div className="heading-display text-[19px] font-semibold">Rabbit Verse</div>
           <div className="text-[11px] uppercase tracking-[0.18em] text-fg-muted">Forge Your Legacy</div>
         </div>
       </div>

@@ -5,7 +5,9 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
 import { AiLogBox } from "@/components/quick-add/ai-log-box";
+import { Button } from "@/components/ui/button";
 import { useCurrencySymbol } from "@/components/locale-provider";
+import type { HueName } from "@/lib/hues";
 import { cn } from "@/lib/utils";
 
 export type LogResult = { ok: boolean; error: string | null };
@@ -25,11 +27,12 @@ export interface QuickAddActions {
   saveJournal: Action;
 }
 
+/** `accent` tints the icon; `hue` tints the button's glow to match it. */
 const TABS = [
-  { key: "expense", label: "Expense", icon: "Wallet", accent: "var(--accent-mint)" },
-  { key: "project", label: "Project", icon: "FolderKanban", accent: "var(--accent-blue)" },
-  { key: "workout", label: "Workout", icon: "Dumbbell", accent: "var(--accent-purple)" },
-  { key: "journal", label: "Journal", icon: "NotebookPen", accent: "var(--accent-orange)" },
+  { key: "expense", label: "Expense", icon: "Wallet", accent: "var(--accent-mint)", hue: "mint" },
+  { key: "project", label: "Project", icon: "FolderKanban", accent: "var(--accent-blue)", hue: "blue" },
+  { key: "workout", label: "Workout", icon: "Dumbbell", accent: "var(--accent-purple)", hue: "purple" },
+  { key: "journal", label: "Journal", icon: "NotebookPen", accent: "var(--accent-orange)", hue: "orange" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -73,29 +76,25 @@ export function QuickAddHub({
         <span className="h-px flex-1 bg-border" />
       </div>
 
-      {/* Tab switcher */}
-      <div className="glass flex gap-1 rounded-2xl p-1.5">
+      {/* Tab switcher. The active tab used to be a sliding `layoutId` pill; the
+          button's own glass now carries that job — a pill flying between two
+          faces would be clipped by their overflow. */}
+      <div className="glass flex gap-1 rounded-full p-1.5">
         {TABS.map((t) => {
           const active = tab === t.key;
           return (
-            <button
+            <Button
               key={t.key}
+              variant={active ? "primary" : "ghost"}
+              hue={t.hue}
+              selected={active}
               onClick={() => setTab(t.key)}
-              className={cn(
-                "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-sm font-medium transition-colors",
-                active ? "text-fg" : "text-fg-muted hover:text-fg",
-              )}
+              className="flex-1 [--rv-pad:2px]"
+              faceClassName="px-2 py-2.5 text-sm font-medium"
             >
-              {active && (
-                <motion.span
-                  layoutId="qa-tab"
-                  className="absolute inset-0 rounded-xl bg-card-hover"
-                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                />
-              )}
-              <Icon name={t.icon} size={16} className="relative" style={{ color: active ? t.accent : undefined }} />
-              <span className="relative hidden sm:inline">{t.label}</span>
-            </button>
+              <Icon name={t.icon} size={16} style={{ color: active ? t.accent : undefined }} />
+              <span className="hidden sm:inline">{t.label}</span>
+            </Button>
           );
         })}
       </div>
@@ -147,33 +146,27 @@ function DayToggle({ name, today, yesterday }: { name: string; today: string; ye
           { v: today, label: "Today" },
           { v: yesterday, label: "Yesterday" },
         ].map((o) => (
-          <button
+          <Button
             key={o.v}
-            type="button"
+            block
+            selected={val === o.v}
             onClick={() => setVal(o.v)}
-            className={cn(
-              "rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
-              val === o.v ? "border-border-strong bg-card-hover text-fg" : "border-border text-fg-secondary hover:text-fg",
-            )}
+            faceClassName="px-3 py-2.5 text-sm font-medium"
           >
             {o.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
   );
 }
 
-function SubmitButton({ pending, children, from = "var(--accent-purple)", to = "var(--accent-blue)" }: { pending: boolean; children: React.ReactNode; from?: string; to?: string }) {
+/** Each hand-logging form ends in one of these; `hue` is the section's accent. */
+function SubmitButton({ pending, children, hue = "purple" }: { pending: boolean; children: React.ReactNode; hue?: HueName }) {
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      style={{ backgroundImage: `linear-gradient(90deg, ${from}, ${to})` }}
-      className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-    >
+    <Button type="submit" variant="primary" hue={hue} size="lg" block loading={pending} faceClassName="py-3">
       {pending ? "Saving…" : children}
-    </button>
+    </Button>
   );
 }
 
@@ -200,9 +193,9 @@ function ExpenseForm({ demo, categories, today, yesterday, action }: { demo: boo
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
           {[50, 100, 500, 1000].map((q) => (
-            <button key={q} type="button" onClick={() => bump(q)} className="rounded-lg border border-border px-2.5 py-1 text-xs text-fg-secondary transition-colors hover:border-border-strong hover:text-fg">
+            <Button key={q} size="sm" hue="mint" onClick={() => bump(q)} faceClassName="px-2.5 py-1 text-xs font-normal">
               +{q}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -211,9 +204,12 @@ function ExpenseForm({ demo, categories, today, yesterday, action }: { demo: boo
         <FieldLabel>Category</FieldLabel>
         <div className="grid grid-cols-3 gap-2">
           {categories.map((c, i) => (
-            <label key={c.id} className="cursor-pointer">
+            // A radio, not a button — but it wears the same glass so the grid
+            // reads as one control strip. `peer-checked` stands in for the
+            // `selected` prop <Button/> would use.
+            <label key={c.id} className="rv-btn cursor-pointer [--rv-pad:3px]">
               <input type="radio" name="category_id" value={c.id} defaultChecked={i === 0} className="peer sr-only" />
-              <span className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-2 py-2.5 text-xs transition-colors peer-checked:border-border-strong peer-checked:bg-card-hover">
+              <span className="rv-btn-face gap-1.5 px-2 py-2.5 text-xs peer-checked:border-border-strong peer-checked:bg-card-hover peer-checked:text-fg">
                 <Icon name={c.icon} size={15} style={{ color: c.color }} />
                 {c.name}
               </span>
@@ -229,7 +225,7 @@ function ExpenseForm({ demo, categories, today, yesterday, action }: { demo: boo
         <input name="note" type="text" maxLength={200} placeholder="Lunch & coffee" className={inputCls} />
       </div>
 
-      <SubmitButton pending={pending} from="var(--accent-mint)" to="var(--accent-blue)">
+      <SubmitButton pending={pending} hue="mint">
         <Icon name="Plus" size={16} /> Add expense
       </SubmitButton>
     </form>
@@ -247,16 +243,17 @@ function ProjectForms({ demo, projects, createAction, progressAction }: { demo: 
     <div className="space-y-4">
       <div className="flex gap-2">
         {(["progress", "new"] as const).map((s) => (
-          <button
+          <Button
             key={s}
+            variant={sub === s ? "primary" : "ghost"}
+            hue="blue"
+            size="sm"
+            selected={sub === s}
             onClick={() => setSub(s)}
-            className={cn(
-              "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-              sub === s ? "bg-card-hover text-fg" : "text-fg-muted hover:text-fg",
-            )}
+            faceClassName="px-3.5 py-1.5 text-sm font-medium"
           >
             {s === "progress" ? "Log progress" : "New goal"}
-          </button>
+          </Button>
         ))}
       </div>
       {sub === "new" ? <NewGoalForm demo={demo} action={createAction} /> : <ProgressForm demo={demo} projects={projects} action={progressAction} />}
@@ -292,16 +289,16 @@ function NewGoalForm({ demo, action }: { demo: boolean; action: Action }) {
       </div>
       <div className="flex flex-wrap gap-1.5">
         {units.map((u) => (
-          <button key={u} type="button" onClick={() => setUnit(u)} className={cn("rounded-lg border px-2.5 py-1 text-xs transition-colors", unit === u ? "border-border-strong bg-card-hover text-fg" : "border-border text-fg-secondary hover:text-fg")}>
+          <Button key={u} size="sm" hue="blue" selected={unit === u} onClick={() => setUnit(u)} faceClassName="px-2.5 py-1 text-xs font-normal">
             {u}
-          </button>
+          </Button>
         ))}
       </div>
       <div>
         <FieldLabel>Description (optional)</FieldLabel>
         <input name="description" maxLength={300} placeholder="Why this matters to you" className={inputCls} />
       </div>
-      <SubmitButton pending={pending} from="var(--accent-blue)" to="var(--accent-cyan)">
+      <SubmitButton pending={pending} hue="blue">
         <Icon name="Plus" size={16} /> Create goal
       </SubmitButton>
     </form>
@@ -335,13 +332,13 @@ function ProgressForm({ demo, projects, action }: { demo: boolean; projects: Pro
         <input ref={amtRef} name="amount" type="number" step="any" required placeholder="5" className={inputCls} />
         <div className="mt-2 flex flex-wrap gap-2">
           {[1, 5, 10, 25].map((q) => (
-            <button key={q} type="button" onClick={() => { if (amtRef.current) amtRef.current.value = String(q); }} className="rounded-lg border border-border px-2.5 py-1 text-xs text-fg-secondary transition-colors hover:border-border-strong hover:text-fg">
+            <Button key={q} size="sm" hue="blue" onClick={() => { if (amtRef.current) amtRef.current.value = String(q); }} faceClassName="px-2.5 py-1 text-xs font-normal">
               +{q}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
-      <SubmitButton pending={pending} from="var(--accent-blue)" to="var(--accent-cyan)">
+      <SubmitButton pending={pending} hue="blue">
         <Icon name="TrendingUp" size={16} /> Log progress
       </SubmitButton>
     </form>
@@ -380,27 +377,25 @@ function WorkoutForm({ demo, workoutAction, weightAction }: { demo: boolean; wor
           <FieldLabel>Type of session</FieldLabel>
           <div className="grid grid-cols-3 gap-2">
             {WORKOUT_TYPES.map((t) => (
-              <button
+              <Button
                 key={t}
-                type="button"
+                block
+                selected={type === t}
                 onClick={() => setType(t)}
-                className={cn(
-                  "rounded-xl border px-2 py-2.5 text-xs font-medium transition-colors",
-                  type === t ? "border-border-strong bg-card-hover text-fg" : "border-border text-fg-secondary hover:text-fg",
-                )}
+                faceClassName="px-2 py-2.5 text-xs font-medium"
               >
                 {t}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={() => submit(true)} disabled={woPending} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60">
+          <Button variant="primary" size="lg" onClick={() => submit(true)} loading={woPending} className="flex-1" faceClassName="py-3">
             <Icon name="Check" size={16} /> Mark {type} done
-          </button>
-          <button type="button" onClick={() => submit(false)} disabled={woPending} className="rounded-xl border border-border px-4 py-3 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg disabled:opacity-60">
+          </Button>
+          <Button size="lg" onClick={() => submit(false)} disabled={woPending} faceClassName="py-3">
             Rest day
-          </button>
+          </Button>
         </div>
       </form>
 
@@ -419,7 +414,7 @@ function WorkoutForm({ demo, workoutAction, weightAction }: { demo: boolean; wor
             <input name="body_fat" type="number" step="0.1" min="1" placeholder="18" className={inputCls} />
           </div>
         </div>
-        <SubmitButton pending={wPending} from="var(--accent-purple)" to="var(--accent-blue)">
+        <SubmitButton pending={wPending} hue="purple">
           <Icon name="Plus" size={16} /> Log body metrics
         </SubmitButton>
       </form>
@@ -450,18 +445,17 @@ function JournalForm({ demo, today, yesterday, action }: { demo: boolean; today:
         <FieldLabel>How did your day feel?</FieldLabel>
         <div className="grid grid-cols-5 gap-2">
           {MOODS.map((m) => (
-            <button
+            <Button
               key={m.v}
-              type="button"
+              block
+              hue="orange"
+              selected={mood === m.v}
               onClick={() => setMood(m.v)}
-              className={cn(
-                "flex flex-col items-center gap-1 rounded-xl border py-2.5 transition-colors",
-                mood === m.v ? "border-border-strong bg-card-hover" : "border-border hover:bg-card-hover/50",
-              )}
+              faceClassName="flex-col gap-1 px-0 py-2.5"
             >
               <span className="text-xl">{m.emoji}</span>
               <span className="text-[10px] text-fg-muted">{m.label}</span>
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -470,7 +464,7 @@ function JournalForm({ demo, today, yesterday, action }: { demo: boolean; today:
         <FieldLabel>Reflection (optional)</FieldLabel>
         <textarea name="body" rows={4} maxLength={2000} placeholder="What happened today? What are you grateful for?" className={cn(inputCls, "resize-none")} />
       </div>
-      <SubmitButton pending={pending} from="var(--accent-orange)" to="var(--accent-gold)">
+      <SubmitButton pending={pending} hue="orange">
         <Icon name="NotebookPen" size={16} /> Save journal
       </SubmitButton>
     </form>

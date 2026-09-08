@@ -35,7 +35,7 @@ export function PageHeader({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-2xl font-bold tracking-tight sm:text-[32px] sm:leading-[1.1]"
+          className="heading-display text-2xl font-bold sm:text-[32px] sm:leading-[1.1]"
           suppressHydrationWarning
         >
           {g.text}, {name} <span className="align-middle">{g.emoji}</span>

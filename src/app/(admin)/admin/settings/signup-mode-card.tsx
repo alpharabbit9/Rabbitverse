@@ -14,10 +14,10 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SIGNUP_MODES, SIGNUP_MODE_COPY } from "@/lib/admin/roles";
 import type { SignupMode } from "@/lib/admin/types";
-import { cn } from "@/lib/utils";
 import { setSignupMode } from "../actions";
 
 const MODE_ICON: Record<SignupMode, string> = {
@@ -77,20 +77,20 @@ export function SignupModeCard({ current, canWrite }: { current: SignupMode; can
         {SIGNUP_MODES.map((mode) => {
           const active = mode === current;
           return (
-            <button
+            // A radio card, so the pill radius is overridden on both boxes and
+            // `aria-checked` — not `aria-pressed` — carries the state.
+            <Button
               key={mode}
-              type="button"
+              block
+              selected={active}
+              aria-pressed={undefined}
               role="radio"
               aria-checked={active}
               disabled={!canWrite || pending}
               title={!canWrite ? "Not available without a service-role key." : undefined}
               onClick={() => choose(mode)}
-              className={cn(
-                "rounded-xl border p-3.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                active
-                  ? "border-border-strong bg-card-hover"
-                  : "border-border hover:border-border-strong hover:bg-card-hover/50",
-              )}
+              className="rounded-[1.1rem] text-left"
+              faceClassName="flex-col items-stretch gap-0 rounded-xl p-3.5 text-left font-normal"
             >
               <div className="flex items-center gap-2">
                 <Icon name={MODE_ICON[mode]} size={16} style={{ color: MODE_ACCENT[mode] }} />
@@ -102,7 +102,7 @@ export function SignupModeCard({ current, canWrite }: { current: SignupMode; can
                 )}
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-fg-secondary">{SIGNUP_MODE_COPY[mode].description}</p>
-            </button>
+            </Button>
           );
         })}
       </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { Icon } from "@/components/icon";
+import { Button, ButtonLink } from "@/components/ui/button";
 import {
   AuthShell,
   AuthSubmit,
@@ -91,14 +92,10 @@ export function LoginExperience({
           </div>
 
           <form action={signIn}>
-            <button
-              type="submit"
-              className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-white px-4 py-3 font-medium text-[#1f1f1f] shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.99]"
-            >
-              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-black/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            <Button type="submit" size="lg" hue="blue" block faceClassName="gap-3 py-3">
               <GoogleIcon />
               Continue with Google
-            </button>
+            </Button>
           </form>
         </div>
       ) : (
@@ -106,14 +103,10 @@ export function LoginExperience({
           <p className="text-sm text-fg-secondary">
             Supabase isn&apos;t configured yet, so Rabbit Verse is running in <strong>demo mode</strong> on sample data.
           </p>
-          <Link
-            href="/"
-            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-3 font-medium text-white shadow-[0_10px_28px_-8px_rgba(139,92,246,0.7)] transition-transform hover:scale-[1.02] active:scale-[0.99]"
-          >
-            <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-            <Icon name="Sparkles" size={16} className="relative" />
-            <span className="relative">Explore the demo</span>
-          </Link>
+          <ButtonLink href="/" variant="primary" size="lg" block faceClassName="py-3">
+            <Icon name="Sparkles" size={16} />
+            Explore the demo
+          </ButtonLink>
           <p className="text-xs text-fg-muted">Add your keys (see SUPABASE_SETUP.md) to enable sign-in.</p>
         </div>
       )}

@@ -53,7 +53,7 @@ export function WorkoutView({
   return (
     <div className="space-y-6 sm:space-y-7">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Workout</h1>
+        <h1 className="heading-display text-2xl font-bold">Workout</h1>
         <p className="mt-1 text-sm text-fg-secondary">
           {weekWorkouts} workout{weekWorkouts === 1 ? "" : "s"} this week{bmi ? ` · BMI ${bmi.value}` : ""}
         </p>
@@ -80,7 +80,7 @@ export function WorkoutView({
       <div className="grid gap-4 sm:grid-cols-3 sm:gap-5">
         <div className="glass rounded-2xl p-5">
           <div className="text-sm text-fg-secondary">This week</div>
-          <div className="mt-1 text-3xl font-bold">{weekWorkouts}×</div>
+          <div className="number-display mt-1 text-3xl font-bold">{weekWorkouts}×</div>
           {paceStatus ? (
             <div className="text-xs" style={{ color: LOOK[paceStatus.level].accent }}>
               {paceStatus.label}
@@ -91,12 +91,12 @@ export function WorkoutView({
         </div>
         <div className="glass rounded-2xl p-5">
           <div className="text-sm text-fg-secondary">Weight</div>
-          <div className="mt-1 text-3xl font-bold">{latest ? `${latest.weightKg}kg` : "—"}</div>
+          <div className="number-display mt-1 text-3xl font-bold">{latest ? `${latest.weightKg}kg` : "—"}</div>
           <div className="text-xs text-fg-muted">{latest?.bodyFatPct ? `Body fat ${latest.bodyFatPct}%` : "Log to track"}</div>
         </div>
         <div className="glass rounded-2xl p-5">
           <div className="text-sm text-fg-secondary">BMI</div>
-          <div className="mt-1 text-3xl font-bold">{bmi?.value ?? "—"}</div>
+          <div className="number-display mt-1 text-3xl font-bold">{bmi?.value ?? "—"}</div>
           {bmi ? (
             <div className="text-xs" style={{ color: bmi.accent }}>
               {bmi.label}

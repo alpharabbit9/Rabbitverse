@@ -31,7 +31,7 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
-  goals?: string; // longer "why / vision" for the project
+  goals?: string; // longer "why / vision" for the project — the "Goals" card
   targetValue: number;
   targetUnit: string; // "%", "sessions", "words", …
   current: number;
@@ -42,6 +42,13 @@ export interface Project {
   tasks?: ProjectTask[]; // milestone checklist; when present, drives progress %
   commits?: ProjectCommit[]; // dated written updates (detail view only)
   daysWorked?: number; // distinct days an update was logged
+  // ---- AI blueprint (set on create; shown on the detail page) --------------
+  logoUrl?: string; // uploaded project logo, else a monogram is drawn
+  idea?: string; // AI-distilled one-paragraph idea — the header's blurb
+  keyFeatures?: string[]; // "Key Features" card
+  problems?: string[]; // "Problems We Solve" card
+  category?: string; // free label, e.g. "Personal Growth" — header meta
+  type?: string; // free label, e.g. "Full-stack Web App" — header meta
 }
 
 export interface ExpenseCategory {

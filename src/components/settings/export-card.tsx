@@ -21,23 +21,19 @@ const CSV_TABLES: { table: string; label: string }[] = [
 export function ExportCard() {
   return (
     <div className="space-y-3">
-      <a
-        href="/api/export"
-        download
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card-solid px-4 py-2.5 text-sm font-medium transition-colors hover:border-border-strong hover:bg-card-hover"
-      >
-        <Icon name="Download" size={15} />
-        Download everything (JSON)
+      {/* Bare <a download>, wearing the button's classes by hand: <ButtonLink/>
+          routes through next/link, and a download must not be a client
+          navigation. */}
+      <a href="/api/export" download className="rv-btn rv-btn-primary w-full">
+        <span className="rv-btn-face px-4 py-2.5">
+          <Icon name="Download" size={15} />
+          Download everything (JSON)
+        </span>
       </a>
       <div className="flex flex-wrap gap-1.5">
         {CSV_TABLES.map((t) => (
-          <a
-            key={t.table}
-            href={`/api/export?table=${t.table}`}
-            download
-            className="rounded-lg border border-border px-2.5 py-1 text-xs text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-          >
-            {t.label} .csv
+          <a key={t.table} href={`/api/export?table=${t.table}`} download className="rv-btn [--rv-pad:3px]">
+            <span className="rv-btn-face px-2.5 py-1 text-xs font-normal">{t.label} .csv</span>
           </a>
         ))}
       </div>

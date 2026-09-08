@@ -3,6 +3,7 @@
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
 import { Icon } from "./icon";
+import { Button } from "./ui/button";
 
 /** The theme is only known on the client, so the icon waits for hydration. */
 const neverChanges = () => () => {};
@@ -19,16 +20,14 @@ export function ThemeToggle({ className }: { className?: string }) {
 
   const isDark = resolvedTheme === "dark";
   return (
-    <button
-      type="button"
+    <Button
+      size="icon"
+      hue={isDark ? "gold" : "blue"}
       aria-label="Toggle theme"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className={
-        "grid size-9 place-items-center rounded-xl border border-border bg-card text-fg-secondary transition-colors hover:text-fg hover:border-border-strong " +
-        (className ?? "")
-      }
+      className={className}
     >
       {mounted ? <Icon name={isDark ? "Sun" : "Moon"} size={17} /> : <span className="size-[17px]" />}
-    </button>
+    </Button>
   );
 }

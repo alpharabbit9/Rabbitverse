@@ -54,6 +54,40 @@
   --glass-sheen: rgba(255, 255, 255, 0.06);
   --glass-highlight: rgba(255, 255, 255, 0.10);
 
+  /* Liquid-glass buttons — see the `.rv-btn` block near the bottom of this file.
+     `--rv-hue` is a bare number set per-button, so these shadows can tint
+     themselves to whichever accent the button is carrying. */
+  --btn-face: rgba(13, 19, 34, 0.72);
+  --btn-border: rgba(255, 255, 255, 0.14);
+  --btn-fg: rgba(244, 247, 251, 0.78);
+  --btn-fg-strong: #f4f7fb;
+  --btn-halo: linear-gradient(0deg, rgba(0, 0, 0, 0.27), rgba(0, 0, 0, 0.67));
+  --btn-inset:
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 2px 2px rgba(255, 255, 255, 0.15),
+    inset 0 4px 4px rgba(255, 255, 255, 0.1),
+    inset 0 8px 8px rgba(255, 255, 255, 0.05),
+    inset 0 16px 16px rgba(255, 255, 255, 0.05);
+  --btn-halo-shadow:
+    1px 1px 1px rgba(255, 255, 255, 0.13),
+    2px 2px 2px rgba(255, 255, 255, 0.07),
+    -1px -1px 1px rgba(0, 0, 0, 0.13),
+    -2px -2px 2px rgba(0, 0, 0, 0.07);
+  --btn-halo-shadow-hover:
+    0 -8px 8px -6px rgba(255, 255, 255, 0.6) inset,
+    0 -16px 16px -8px hsl(var(--rv-hue) 100% 70% / 0.3) inset,
+    1px 1px 1px rgba(255, 255, 255, 0.13),
+    2px 2px 2px rgba(255, 255, 255, 0.07),
+    -1px -1px 1px rgba(0, 0, 0, 0.13),
+    -2px -2px 2px rgba(0, 0, 0, 0.07);
+  --btn-halo-shadow-active:
+    0 -8px 12px -6px rgba(255, 255, 255, 0.67) inset,
+    0 -16px 16px -8px hsl(var(--rv-hue) 100% 70% / 0.8) inset,
+    1px 1px 1px rgba(255, 255, 255, 0.27),
+    2px 2px 2px rgba(255, 255, 255, 0.13),
+    -1px -1px 1px rgba(0, 0, 0, 0.13),
+    -2px -2px 2px rgba(0, 0, 0, 0.07);
+
   color-scheme: dark;
 }
 
@@ -101,6 +135,31 @@
   --glass-sheen: rgba(255, 255, 255, 0.7);
   --glass-highlight: rgba(255, 255, 255, 0.9);
 
+  /* Liquid-glass buttons — light is its own design, not an inversion: a white
+     pill lit from above, with the hue arriving only on hover/press. */
+  --btn-face: rgba(255, 255, 255, 0.82);
+  --btn-border: rgba(15, 23, 42, 0.1);
+  --btn-fg: rgba(15, 23, 42, 0.72);
+  --btn-fg-strong: #0f172a;
+  --btn-halo: linear-gradient(0deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.11));
+  --btn-inset:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 2px 4px rgba(255, 255, 255, 0.6),
+    inset 0 -6px 12px -8px rgba(15, 23, 42, 0.1);
+  --btn-halo-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 6px 16px -10px rgba(15, 23, 42, 0.22);
+  --btn-halo-shadow-hover:
+    0 -8px 10px -6px rgba(255, 255, 255, 0.8) inset,
+    0 -14px 16px -8px hsl(var(--rv-hue) 95% 62% / 0.28) inset,
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 10px 22px -12px rgba(15, 23, 42, 0.28);
+  --btn-halo-shadow-active:
+    0 -8px 12px -6px rgba(255, 255, 255, 0.9) inset,
+    0 -16px 16px -8px hsl(var(--rv-hue) 95% 62% / 0.5) inset,
+    0 1px 2px rgba(15, 23, 42, 0.08),
+    0 12px 26px -12px rgba(15, 23, 42, 0.32);
+
   color-scheme: light;
 }
 
@@ -131,7 +190,8 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-display: var(--font-display);
+  /* Display spots now use the same face as the UI (Plus Jakarta Sans). */
+  --font-display: var(--font-sans);
 
   --radius-xl: 1.25rem;
   --radius-2xl: 1.5rem;
@@ -148,7 +208,6 @@
     background-color: var(--bg);
     color: var(--fg);
     font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
-    font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -171,6 +230,19 @@
 }
 
 @layer components {
+  /* --- Display type -----------------------------------------------------------
+     Headings and major KPI numbers render in the UI face (Plus Jakarta Sans).
+     These stay as semantic hooks so the display treatment lives in one place:
+     `.heading-display` for headings/wordmark, `.number-display` for KPI figures
+     (tabular so digits stay aligned). Jakarta needs no extra tracking. */
+  .heading-display {
+    font-family: var(--font-display), system-ui, sans-serif;
+  }
+  .number-display {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Glass card — the core surface of Rabbit Verse.
      A faint top-down sheen + inset highlight gives it real depth (dark identity). */
   .glass {
@@ -206,6 +278,394 @@
   }
 }
 
+/* ---------- The button ----------
+   Every control in Rabbit Verse is this one shape: a glass pill sitting inside
+   a 4px halo band, lit from above by a stack of inset white highlights, with a
+   coloured glow that rises from the bottom edge on hover and flares on press.
+
+   Two boxes, not one. The <button> itself IS the halo band — its padding is the
+   band — and .rv-btn-face is the pill inside it. The design this came from drew
+   the halo with a ::before at z-index -1, which only survives while nothing
+   above it opens a stacking context; dropped inside a .glass card it would
+   disappear. Real boxes always paint.
+
+   Colour is one number: --rv-hue, set per button from lib/hues.ts. That is why
+   there is no variant per accent — the same rules tint purple, mint and rose.
+
+   Padding and type size are deliberately left to Tailwind utilities on the face
+   (they sit in a later layer and win), so a caller can say px-3 py-1.5 and mean
+   it without fighting specificity. */
+@layer components {
+  .rv-btn {
+    --rv-hue: 258;
+    --rv-pad: 4px;
+    --rv-t: 0.4s;
+
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: var(--rv-pad);
+    border-radius: 999px;
+    background-image: var(--btn-halo);
+    box-shadow: var(--btn-halo-shadow);
+    cursor: pointer;
+    transition: box-shadow var(--rv-t), opacity var(--rv-t), transform 0.16s ease;
+  }
+
+  .rv-btn-face {
+    position: relative;
+    display: inline-flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    overflow: hidden;
+    padding: 0.5rem 1.1rem;
+    border: 1px solid var(--btn-border);
+    border-radius: 999px;
+    background-color: var(--btn-face);
+    box-shadow: var(--btn-inset);
+    color: var(--btn-fg);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: background-color var(--rv-t), border-color var(--rv-t), color var(--rv-t), box-shadow var(--rv-t);
+    @apply backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  /* The hue itself: off at rest, lit on hover, doubled on press. */
+  .rv-btn-face::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    /* Written out rather than held in a --btn-wash token: Lightning CSS drops a
+       custom property whose value is a gradient built out of another var(). */
+    background-image: linear-gradient(
+      0deg,
+      #ffffff 0%,
+      hsl(var(--rv-hue) 100% 70%) 3%,
+      hsl(var(--rv-hue) 100% 70% / 0.5) 9%,
+      transparent 46%
+    );
+    mask-image: linear-gradient(0deg, #fff, transparent);
+    -webkit-mask-image: linear-gradient(0deg, #fff, transparent);
+    opacity: 0;
+    transition: opacity var(--rv-t), filter var(--rv-t);
+  }
+
+  .light .rv-btn-face::after {
+    background-image: linear-gradient(
+      0deg,
+      hsl(var(--rv-hue) 95% 56%) 0%,
+      hsl(var(--rv-hue) 95% 60% / 0.55) 7%,
+      transparent 42%
+    );
+  }
+
+  /* Label and icons ride above the wash. */
+  .rv-btn-face > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---- states ---- */
+  .rv-btn:hover:not(:disabled) {
+    box-shadow: var(--btn-halo-shadow-hover);
+  }
+  .rv-btn:hover:not(:disabled) .rv-btn-face {
+    border-color: hsl(var(--rv-hue) 100% 80% / 0.4);
+    color: var(--btn-fg-strong);
+  }
+  .rv-btn:hover:not(:disabled) .rv-btn-face::after {
+    opacity: 0.85;
+  }
+
+  .rv-btn:active:not(:disabled) {
+    box-shadow: var(--btn-halo-shadow-active);
+    transform: scale(0.985);
+  }
+  .rv-btn:active:not(:disabled) .rv-btn-face {
+    border-color: hsl(var(--rv-hue) 100% 80% / 0.7);
+  }
+  .rv-btn:active:not(:disabled) .rv-btn-face::after {
+    opacity: 1;
+    filter: brightness(1.8);
+  }
+
+  .rv-btn:focus-visible {
+    outline: 2px solid hsl(var(--rv-hue) 100% 72% / 0.85);
+    outline-offset: 2px;
+  }
+  .rv-btn:focus-visible .rv-btn-face::after {
+    opacity: 0.7;
+  }
+
+  .rv-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
+    transform: none;
+  }
+
+  /* A toggle that is currently on — the hue stays lit without a pointer. */
+  .rv-btn[data-selected="true"] {
+    box-shadow: var(--btn-halo-shadow-hover);
+  }
+  .rv-btn[data-selected="true"] .rv-btn-face {
+    background-color: color-mix(in srgb, hsl(var(--rv-hue) 90% 60%) 14%, var(--btn-face));
+    border-color: hsl(var(--rv-hue) 100% 80% / 0.45);
+    color: var(--btn-fg-strong);
+  }
+  .rv-btn[data-selected="true"] .rv-btn-face::after {
+    opacity: 0.8;
+  }
+
+  /* An 80%-lightness rim disappears against a white pill, so light gets its own. */
+  .light .rv-btn:hover:not(:disabled) .rv-btn-face,
+  .light .rv-btn[data-selected="true"] .rv-btn-face {
+    border-color: hsl(var(--rv-hue) 85% 52% / 0.45);
+  }
+  .light .rv-btn:active:not(:disabled) .rv-btn-face {
+    border-color: hsl(var(--rv-hue) 85% 48% / 0.7);
+  }
+
+  /* ---- variants ---- */
+
+  /* Primary: the one action on the screen that matters. The hue is mixed into
+     the pill itself, so it reads as lit before anyone touches it. */
+  .rv-btn-primary .rv-btn-face {
+    background-color: color-mix(in srgb, hsl(var(--rv-hue) 92% 62%) 26%, var(--btn-face));
+    border-color: hsl(var(--rv-hue) 100% 80% / 0.35);
+    color: var(--btn-fg-strong);
+    font-weight: 600;
+  }
+  .rv-btn-primary .rv-btn-face::after {
+    opacity: 0.45;
+  }
+  .rv-btn-primary:hover:not(:disabled) .rv-btn-face::after {
+    opacity: 1;
+  }
+
+  /* Ghost: no chrome until you point at it, then the glass materialises. */
+  .rv-btn-ghost {
+    background-image: none;
+    box-shadow: none;
+  }
+  .rv-btn-ghost .rv-btn-face {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .rv-btn-ghost:hover:not(:disabled) {
+    background-image: var(--btn-halo);
+  }
+  .rv-btn-ghost:hover:not(:disabled) .rv-btn-face {
+    background-color: var(--btn-face);
+    border-color: var(--btn-border);
+    box-shadow: var(--btn-inset);
+    @apply backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  /* Dashed: "add another one" — an outline waiting to be filled. */
+  .rv-btn-dashed {
+    background-image: none;
+    box-shadow: none;
+  }
+  .rv-btn-dashed .rv-btn-face {
+    border-style: dashed;
+    background-color: transparent;
+    box-shadow: none;
+  }
+  .rv-btn-dashed:hover:not(:disabled) {
+    background-image: var(--btn-halo);
+    box-shadow: var(--btn-halo-shadow-hover);
+  }
+  .rv-btn-dashed:hover:not(:disabled) .rv-btn-face {
+    border-color: hsl(var(--rv-hue) 100% 80% / 0.5);
+  }
+
+  /* Danger: rose text at rest — the hue is already 353, so hover does the rest. */
+  .rv-btn-danger .rv-btn-face {
+    color: var(--accent-rose);
+  }
+  .rv-btn-danger:hover:not(:disabled) .rv-btn-face {
+    background-color: color-mix(in srgb, var(--accent-rose) 26%, var(--btn-face));
+    color: var(--btn-fg-strong);
+  }
+
+  /* ---- the Generate flourish ----
+     Only the AI actions wear this: the letters of the label shimmer one after
+     the next while the model is thinking, and the sparkle flickers with them. */
+  .rv-btn-letter {
+    display: inline-block;
+    white-space: pre;
+    animation: rv-btn-letter 2s ease-in-out infinite;
+  }
+  @keyframes rv-btn-letter {
+    50% {
+      color: var(--btn-fg-strong);
+      text-shadow: 0 0 3px hsl(var(--rv-hue) 100% 80% / 0.55);
+    }
+  }
+  .rv-btn-spark {
+    animation: rv-btn-flicker 2s linear infinite;
+    animation-delay: 0.5s;
+    filter: drop-shadow(0 0 2px hsl(var(--rv-hue) 100% 78% / 0.6));
+  }
+  @keyframes rv-btn-flicker {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  /* Generating is disabled (no double-submit) but must not look switched off —
+     the shimmer is the whole point of the state. */
+  .rv-btn[data-generating="true"]:disabled {
+    opacity: 0.88;
+    cursor: progress;
+  }
+  .rv-btn[data-generating="true"] .rv-btn-letter {
+    animation-duration: 1.2s;
+  }
+  .rv-btn[data-generating="true"] .rv-btn-spark {
+    animation-duration: 1.2s;
+    animation-delay: 0.2s;
+  }
+  .rv-btn:hover .rv-btn-spark {
+    animation: none;
+    filter: drop-shadow(0 0 3px hsl(var(--rv-hue) 100% 70%));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rv-btn,
+    .rv-btn-face,
+    .rv-btn-face::after {
+      transition: none;
+    }
+    .rv-btn:active:not(:disabled) {
+      transform: none;
+    }
+    .rv-btn-letter,
+    .rv-btn-spark {
+      animation: none;
+    }
+  }
+}
+
+
+/* ---------- The project card ----------
+   The wide project tile: a glass slab with a logo well on the left, the vitals
+   on the right, and a coloured ambience that comes up when you point at it.
+
+   Its chrome lives here rather than as Tailwind utilities on the element for the
+   same reason `.rv-btn`'s does — it is a stack of colour-mixed shadows with a
+   hover state and a light-theme rewrite, and that is unreadable spelled out as
+   arbitrary values. The layout, which a reader of the component actually wants
+   to see, stays in the TSX.
+
+   One knob: `--pc-accent`, set per card from the project's status and inherited
+   by everything inside it. A completed project glows mint, an archived one
+   barely glows at all, and nothing else has to know which status it is. */
+@layer components {
+  .rv-pcard {
+    --pc-accent: var(--accent-purple);
+
+    position: relative;
+    border: 1px solid color-mix(in srgb, var(--pc-accent) 20%, var(--border));
+    border-radius: 1.75rem;
+    background-color: var(--card);
+    background-image:
+      radial-gradient(120% 130% at 0% 0%, color-mix(in srgb, var(--pc-accent) 10%, transparent), transparent 52%),
+      linear-gradient(155deg, var(--glass-sheen), transparent 42%);
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      0 26px 60px -34px rgba(0, 0, 0, 0.9),
+      0 0 44px -26px color-mix(in srgb, var(--pc-accent) 75%, transparent);
+    transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1), border-color 0.35s ease, box-shadow 0.35s ease;
+    @apply backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  .rv-pcard:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--pc-accent) 42%, var(--border));
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      0 34px 70px -32px rgba(0, 0, 0, 0.95),
+      0 0 72px -22px color-mix(in srgb, var(--pc-accent) 85%, transparent);
+  }
+
+  .light .rv-pcard {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      0 10px 30px -18px rgba(15, 23, 42, 0.26),
+      0 0 40px -28px color-mix(in srgb, var(--pc-accent) 70%, transparent);
+  }
+  .light .rv-pcard:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 18px 42px -20px rgba(15, 23, 42, 0.3),
+      0 0 48px -24px color-mix(in srgb, var(--pc-accent) 80%, transparent);
+  }
+
+  /* The whole card is one link, and the link is the project's name — a screen
+     reader hears "Rabbitverse, link", not "link" — stretched over the card by a
+     pseudo-element. Anything that needs its own hover (the avatars) lifts itself
+     above this with `relative z-[1]`. */
+  .rv-pcard-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .rv-pcard-link:focus-visible {
+    outline: none;
+  }
+  /* …so the focus ring belongs to the card, which is what the eye reads as the
+     thing being activated. */
+  .rv-pcard:has(.rv-pcard-link:focus-visible) {
+    outline: 2px solid color-mix(in srgb, var(--pc-accent) 85%, transparent);
+    outline-offset: 3px;
+  }
+
+  /* The logo well — the brightest object on the card, lit from the top edge. */
+  .rv-pcard-logo {
+    border: 1px solid color-mix(in srgb, var(--pc-accent) 38%, transparent);
+    background-image:
+      radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--pc-accent) 45%, transparent), transparent 72%),
+      linear-gradient(165deg, color-mix(in srgb, var(--pc-accent) 20%, var(--surface)), var(--surface));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 0 46px -14px color-mix(in srgb, var(--pc-accent) 60%, transparent);
+    transition: border-color 0.35s ease, box-shadow 0.35s ease;
+  }
+  .rv-pcard:hover .rv-pcard-logo {
+    border-color: color-mix(in srgb, var(--pc-accent) 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 0 64px -10px color-mix(in srgb, var(--pc-accent) 78%, transparent);
+  }
+
+  /* Tag pills and the "+N" bubble — the card's own surface, not the page's. */
+  .rv-pcard-pill {
+    border: 1px solid var(--border);
+    background-color: var(--card-hover);
+    transition: border-color 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+  }
+  .rv-pcard-pill:hover {
+    border-color: color-mix(in srgb, var(--pc-accent) 45%, var(--border));
+    background-color: color-mix(in srgb, var(--pc-accent) 10%, var(--card-hover));
+    color: var(--fg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rv-pcard:hover {
+      transform: none;
+    }
+  }
+}
 /* Scrollbars — subtle, on-brand */
 * {
   scrollbar-width: thin;

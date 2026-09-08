@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { ButtonLink } from "@/components/ui/button";
 
 /*
   What /signup is when the door is shut.
@@ -30,12 +31,9 @@ export function SignupClosed({ notice }: { notice?: string | null }) {
           The door is closed for now. Nothing has changed for anyone who already has an account — your data is where
           you left it and sign-in works as normal.
         </p>
-        <Link
-          href="/login"
-          className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-3 font-medium text-white shadow-[0_10px_28px_-8px_rgba(139,92,246,0.7)] transition-transform hover:scale-[1.02] active:scale-[0.99]"
-        >
+        <ButtonLink href="/login" variant="primary" size="lg" block faceClassName="py-3">
           Go to sign in
-        </Link>
+        </ButtonLink>
       </div>
     </AuthShell>
   );

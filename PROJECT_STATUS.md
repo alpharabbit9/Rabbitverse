@@ -11,7 +11,7 @@
 > - Spec & phased plan: `C:\Users\User\.claude\plans\you-are-my-senior-peaceful-pearl.md`
 > - Design system (colors, themes, philosophy): [`design.md`](design.md)
 
-_Last updated: 2026-08-30_
+_Last updated: 2026-09-05_
 
 > **V2 has begun.** V1 is finished; V2.0 ("Tell Rabbit what you did; Rabbit tells you when
 > you're off-track") is a two-pillar build in **7 phases** — full spec in the plan file
@@ -310,9 +310,16 @@ open), `src/lib/supabase/admin.ts` (service role, one caller, write-only), and m
 `0007_admin.sql` + `0008_invites.sql` — **applied to the live DB 2026-08-30**; `SUPABASE_SERVICE_ROLE_KEY`
 set in Vercel; `alpharabbit74@gmail.com` promoted to admin. (Local `.env.local` still comments the
 service-role key out → local admin panel is read-only.)
+**Now present (Create New Project):** the `/projects/new` route — `src/app/(app)/projects/new/`
+(page + `create-project-view.tsx`), `src/components/projects/create/` (state machine
+`use-create-project.ts` + ten components), `src/lib/ai/project-blueprint.ts` (+ tests),
+`src/lib/project-logo.ts` (browser-side upload), `projects/blueprint-actions.ts`, and migration
+`0009_project_blueprint.sql` — **NOT yet applied to the live DB**; until it is, Create Project fails
+on the unknown columns and there is no `project-logos` bucket.
 **Still not present:** Upstash keys, the reminders Edge Function + cron deploy, Higgsfield mascot
 art. **Now present (V4.0 Phase I):** `.github/workflows/ci.yml` — lint + test + build on push to
-`main` and every PR. **Not yet exercised end-to-end:** the human Phase G checklist (see the roadmap).
+`main` and every PR. **Not yet exercised end-to-end:** the human Phase G checklist (see the roadmap),
+and the signed-in half of Create New Project (the Groq call and the write).
 
 ---
 
@@ -320,7 +327,97 @@ art. **Now present (V4.0 Phase I):** `.github/workflows/ci.yml` — lint + test 
 
 > Newest first. Each entry: date · what changed · what's next.
 
-### 2026-08-30 (latest) — V4.0 Phase I: CI
+### 2026-09-05 (latest) — Reverted to single-font: Plus Jakarta Sans only
+
+Dropped the custom display face entirely — no more Brunson (and a briefly-trialed Bayside). Everything,
+including headings, the wordmark and KPI numbers, now renders in **Plus Jakarta Sans** (`--font-sans`).
+
+- Removed the `next/font/local` loader and the `${...}.variable` class from `layout.tsx`; deleted the
+  unused `src/app/fonts/` files (`Brunson.ttf`, `Bayside.otf`). `src/app/fonts/` is now empty.
+- `globals.css`: `--font-display` now points at `var(--font-sans)`, so the `.heading-display` /
+  `.number-display` hooks (still used across ~22 files) keep working but resolve to Jakarta. Dropped the
+  Brunson-specific positive letter-spacing (`0.035em` / `0.015em`) — it only existed because Brunson was
+  condensed; `.number-display` keeps `tabular-nums`.
+- Verified on `/login` (real font pipeline): `.heading-display` computes to `"Plus Jakarta Sans"`,
+  letter-spacing `normal`; wordmark + tagline render cleanly, no console errors.
+
+### 2026-09-05 — Typography system: Brunson + Plus Jakarta Sans
+
+A typography-only refinement (no layout/color/spacing changes). Established a **two-font system** so the
+UI reads as a "premium personal OS" rather than a generic SaaS dashboard:
+
+- **Brunson** (heavy condensed display face, `--font-display`) — the Rabbit Verse *personality* font.
+  Loaded via `next/font/local` from `src/app/fonts/Brunson.ttf` (single 400 weight; `Space Grotesk`
+  fallback keeps metrics stable). Replaces Space Grotesk as the display token.
+- **Plus Jakarta Sans** (`--font-sans`) — the *functional* UI font, via `next/font/google`. Replaces
+  Geist for body, nav, buttons, data, labels. Geist Mono retained for `--font-mono`.
+- Applied `font-display` at the **design-system level** so it stays reusable (~20–30% of visible text):
+  `PageHeader` h1, all page-title `h1`s, `Panel`/`AIInsight`/`MascotSays` section titles, `StatCard` +
+  `SectionCard` KPI numbers, the Life-Score ring, and the three workout KPIs. Pre-existing `font-display`
+  spots (brand wordmark, project header/logo/progress/stat) inherit Brunson automatically.
+- Brunson is heavy + *condensed*, so `tracking-tight` made headings collide into a block. Centralized
+  the fix in two component classes in `globals.css`: `.heading-display` (font-display + `0.035em`) and
+  `.number-display` (font-display + `0.015em` + tabular figures). Every Brunson text/number site uses
+  these instead of a bare `font-display` + `tracking-*`, so spacing is tuned in one place.
+- Removed the Geist-specific `font-feature-settings: "cv11","ss01"` from `body` (would trigger unwanted
+  Jakarta alternates).
+- Verified: Brunson + Jakarta render correctly on `/login` (real font pipeline), no console errors,
+  `tsc --noEmit` clean. Dashboard interior not screenshot-verified (Supabase auth gate; no demo creds).
+- **Next:** if Brunson ever needs multiple weights or a web-optimized payload, add a woff2 (needs brotli).
+
+### 2026-08-31 — The Create New Project page
+
+Creating a project used to be a card in the `/projects` grid: a name, a paragraph, a status, some
+tags. Milestones came later, from the project's detail page, off whatever had been typed into
+`goals`. That is now a whole route — **`/projects/new`** — built to the reference design, where one
+free-form description becomes a reviewable blueprint and an ordered milestone list before anything is
+written to the database.
+
+- **The flow.** Section 1 takes a logo, a name and one big description (5000-char counter, purple
+  focus glow). "Generate with AI" sends it to Groq and gets back structured JSON — idea, key
+  features, problems, milestones — which appear as section 2 (three editable cards) and section 3
+  (draggable milestone rows with Planned / In progress / Completed). Everything is editable; nothing
+  is saved until "Create Project", so an abandoned draft leaves nothing behind.
+- **The AI layer.** `src/lib/ai/project-blueprint.ts` is pure and unit-tested (23 new tests, 248
+  total): prompt, zod schema, bullet-glyph tidying, and `demoBlueprint()` — a keyword/segment
+  heuristic so the page works with no `GROQ_API_KEY` and degrades instead of dead-ending when Groq is
+  down. The UI labels heuristic output as offline. Verified against the live model
+  (`openai/gpt-oss-120b`): the real response parses clean and the milestones are project-specific and
+  dependency-ordered.
+- **Server actions.** `projects/blueprint-actions.ts` — `generateProjectBlueprint` (behind the same
+  `rl:planner` limit + daily circuit breaker as the rest of the AI layer) and
+  `createProjectFromBlueprint`, which writes the project and its milestones and **rolls the project
+  back** if the milestone insert fails. Logo URLs are accepted only if they point inside our own
+  bucket.
+- **Create page now covers the full project model.** Added an "Aimed finish date" (`target_date`) input
+  and a preset tag picker to section 1 of `/projects/new`, so a new project no longer starts with a
+  null finish date and empty tags (both were previously only reachable via the edit form / detail-view
+  tag editor). The preset list + 10-tag cap live in the new `src/lib/project-tags.ts` (`sanitiseTags`),
+  now shared by the create page and the detail-view `TagEditor`. `CreateProjectPayload` gained
+  `targetDate` + `tags`; the create action sanitises both with the same rules as the legacy manual
+  create (`yyyy-mm-dd` or null; each tag ≤40 chars, ≤10 total). Note the deliberate naming: the
+  "Describe your project" textarea is stored in `goals`, while `description` is the AI `idea` trimmed to
+  300 chars (the card subtitle).
+- **Migration `0009_project_blueprint.sql` — NOT YET APPLIED.** Adds `projects.logo_url / idea /
+  key_features / problems`, `project_tasks.status` with a trigger that keeps it in step with the
+  legacy `done` flag (so every existing write path is untouched), and a public-read,
+  owner-write `project-logos` storage bucket. Until it is run in the Supabase SQL editor, Create
+  Project will fail on the unknown columns.
+- **Components.** `src/components/projects/create/` — `use-create-project.ts` holds the entire state
+  machine; the ten components under it render and delegate. `NewProjectForm` is gone from
+  `project-forms.tsx`; the `/projects` grid now has a tile that links here.
+- **Verified in the browser** (demo server, 1440px / 390px, dark + light): generate, edit + cancel on
+  a blueprint card, add/delete a feature, status change, reorder by menu / keyboard / drag, add and
+  auto-drop a blank milestone, logo pick + preview + remove, and the Clear confirmation. Found and
+  fixed one real bug on the way: `.glass` sets a `backdrop-filter`, which made every milestone row its
+  own stacking context and left the status and ⋯ popovers painted *under* the next row and
+  unclickable — the rows now carry a descending `z-index`.
+- **Next:** apply `0009` in the Supabase SQL editor, then create one real project end to end (the
+  signed-in path — the AI call and the write — could not be exercised from the demo server). After
+  that, consider surfacing `idea` / `key_features` / `problems` on the project detail page; they are
+  stored but nothing reads them yet.
+
+### 2026-08-30 — V4.0 Phase I: CI
 
 The repo had no `.github/` and no automation at all — 225 vitest tests and `npm run lint` only ever
 ran when someone remembered to. Phase I adds one workflow, `.github/workflows/ci.yml`:

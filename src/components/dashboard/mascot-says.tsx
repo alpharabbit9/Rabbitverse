@@ -14,7 +14,7 @@ export function MascotSays({ insights }: { insights: Insight[] }) {
         <span className="grid size-7 place-items-center rounded-lg bg-card-hover">
           <Icon name="Sparkles" size={15} style={{ color: "var(--accent-purple)" }} />
         </span>
-        <h3 className="font-semibold">{name} says</h3>
+        <h3 className="heading-display text-[17px] font-semibold">{name} says</h3>
       </div>
       <ul className="space-y-2.5 pr-20 sm:pr-28">
         {insights.map((ins, i) => (

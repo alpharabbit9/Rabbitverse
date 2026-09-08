@@ -9,6 +9,7 @@ import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { JournalForm } from "./journal-form";
 import { RecentJournal } from "./recent-journal";
+import { Button } from "@/components/ui/button";
 import { RangeToggle, useRange } from "@/components/ui/range-toggle";
 import { sliceRange } from "@/lib/range";
 
@@ -40,7 +41,7 @@ export function MentalView({
   return (
     <div className="space-y-6 sm:space-y-7">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Mental Health</h1>
+        <h1 className="heading-display text-2xl font-bold">Mental Health</h1>
         <p className="mt-1 text-sm text-fg-secondary">
           {avgMood ? `Average mood ${avgMood}/5 (30d) · ` : ""}
           {journal.length} reflection{journal.length === 1 ? "" : "s"}
@@ -53,10 +54,10 @@ export function MentalView({
         {canLog ? (
           <JournalForm today={today} yesterday={addDays(today, -1)} />
         ) : (
-          <button className="flex w-full items-center gap-3 rounded-xl border border-border bg-card-hover/60 px-4 py-3 text-left text-sm text-fg-muted transition-colors hover:border-border-strong">
+          <Button block hue="orange" size="lg" faceClassName="justify-start gap-3 py-3 text-sm font-normal">
             <span className="text-lg">✍️</span>
             Write today&apos;s reflection…
-          </button>
+          </Button>
         )}
       </Panel>
 

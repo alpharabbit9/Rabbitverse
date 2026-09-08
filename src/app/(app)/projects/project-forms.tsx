@@ -5,12 +5,15 @@ import { toast } from "sonner";
 import { Icon } from "@/components/icon";
 import { shortDate } from "@/lib/dates";
 import type { Project, ProjectCommit, ProjectTask } from "@/lib/types";
+import type { HueName } from "@/lib/hues";
+import { MAX_PROJECT_TAGS, PROJECT_PRESET_TAGS } from "@/lib/project-tags";
+import { Button } from "@/components/ui/button";
+import { GenerateButton } from "@/components/ui/generate-button";
 import { RowMenu } from "@/components/ui/row-menu";
 import { useUndoableDelete } from "@/components/ui/use-undoable-delete";
 import {
   addCommit,
   addTask,
-  createProject,
   deleteCommit,
   deleteProject,
   deleteTask,
@@ -34,146 +37,6 @@ const INITIAL: LogResult = { ok: false, error: null };
 
 const inputCls =
   "w-full rounded-xl border border-border bg-card-hover/60 px-3 py-2.5 text-sm outline-none transition-colors focus:border-border-strong";
-
-const PRESET_TAGS = [
-  "Full-stack", "Frontend", "Backend", "AI Agent", "ML/AI",
-  "Mobile", "Web", "API", "Data", "DevOps", "Design", "Game", "Other",
-];
-
-/** Inline "create a project" form that expands from a button. */
-export function NewProjectForm() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLFormElement>(null);
-  const [status, setStatus] = useState<"ongoing" | "planned">("ongoing");
-  const [tags, setTags] = useState<string[]>([]);
-  // The toast + reset live in the action, not an effect: an effect would fire a
-  // second render pass for every result, and re-fire on a second identical one.
-  const [, action, pending] = useActionState(async (prev: LogResult, formData: FormData) => {
-    const res = await createProject(prev, formData);
-    if (res.ok) {
-      toast.success("Project created — open it to generate milestones");
-      ref.current?.reset();
-      setTags([]);
-      setStatus("ongoing");
-    } else if (res.error) {
-      toast.error(res.error);
-    }
-    return res;
-  }, INITIAL);
-
-  const toggleTag = (tag: string) => {
-    setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag].slice(0, 10)));
-  };
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="glass flex min-h-[7rem] items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-4 py-3 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-      >
-        <Icon name="Plus" size={16} />
-        New project
-      </button>
-    );
-  }
-
-  return (
-    <form ref={ref} action={action} className="glass space-y-3 rounded-2xl p-5 sm:col-span-2 lg:col-span-3">
-      <input type="hidden" name="status" value={status} />
-      <input type="hidden" name="tags" value={tags.join(",")} />
-
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">New project</span>
-        <button type="button" onClick={() => setOpen(false)} className="text-fg-muted hover:text-fg" aria-label="Close">
-          <Icon name="X" size={16} />
-        </button>
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Project name</label>
-        <input name="name" required maxLength={120} placeholder="e.g. Learn Spanish" className={inputCls} />
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-fg-secondary">
-          The idea — what you&apos;re building, the problem it solves, key features
-        </label>
-        <textarea
-          name="goals"
-          rows={4}
-          maxLength={2000}
-          placeholder="Describe your project idea in detail — Rabbit will turn it into milestones"
-          className={`${inputCls} resize-none`}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Short description (optional)</label>
-        <input name="description" maxLength={300} placeholder="A one-liner for the card" className={inputCls} />
-      </div>
-
-      {/* Status picker */}
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Status</label>
-        <div className="grid grid-cols-2 gap-2">
-          {(["ongoing", "planned"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatus(s)}
-              aria-pressed={status === s}
-              className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-                status === s
-                  ? "border-border-strong bg-card-hover text-fg"
-                  : "border-border text-fg-secondary hover:text-fg"
-              }`}
-            >
-              {s === "ongoing" ? "In progress" : "Planned"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tags */}
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Tags (optional)</label>
-        <div className="flex flex-wrap gap-1.5">
-          {PRESET_TAGS.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => toggleTag(tag)}
-              className={`rounded-lg px-2 py-1 text-[11px] font-medium transition-colors ${
-                tags.includes(tag)
-                  ? "bg-accent-blue/20 text-accent-cyan"
-                  : "bg-card-hover text-fg-secondary hover:text-fg"
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-fg-secondary">Aimed finish date (optional)</label>
-        <input name="target_date" type="date" className={inputCls} />
-      </div>
-
-      <p className="text-xs text-fg-muted">
-        You&apos;ll generate milestones and log progress on the project page. Start date is set to today.
-      </p>
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-xl bg-gradient-to-r from-accent-blue to-accent-cyan px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-      >
-        {pending ? "Creating…" : "Create project"}
-      </button>
-    </form>
-  );
-}
 
 /** Add a task to a project's checklist. */
 export function TaskAdder({ projectId }: { projectId: string }) {
@@ -199,14 +62,9 @@ export function TaskAdder({ projectId }: { projectId: string }) {
         placeholder="Add a task or milestone…"
         className={`${inputCls} py-2`}
       />
-      <button
-        type="submit"
-        disabled={pending}
-        aria-label="Add task"
-        className="shrink-0 rounded-xl bg-card-hover px-3 py-2 text-fg-secondary transition-colors hover:text-fg disabled:opacity-60"
-      >
+      <Button type="submit" size="icon" hue="blue" disabled={pending} aria-label="Add task">
         <Icon name="Plus" size={16} />
-      </button>
+      </Button>
     </form>
   );
 }
@@ -244,29 +102,34 @@ export function TaskRow({ task, canLog = false }: { task: ProjectTask; canLog?: 
       <form action={handleToggle} className="flex min-w-0 flex-1 items-center gap-2.5">
         <input type="hidden" name="task_id" value={task.id} />
         <input type="hidden" name="done" value={String(!task.done)} />
-        <button
+        <Button
           type="submit"
+          variant="ghost"
+          size="icon-sm"
+          hue="mint"
           disabled={togglePending}
           aria-label={optimisticDone ? "Mark not done" : "Mark done"}
-          className="shrink-0"
         >
           {optimisticDone ? (
             <Icon name="CheckCircle2" size={20} style={{ color: "var(--accent-mint)" }} />
           ) : (
             <span className="block size-5 rounded-full border-2 border-border transition-colors group-hover:border-border-strong" />
           )}
-        </button>
+        </Button>
         <span className={`truncate text-sm ${optimisticDone ? "text-fg-muted line-through" : "text-fg"}`}>{task.title}</span>
       </form>
       <form action={deleteAction} className="shrink-0">
         <input type="hidden" name="task_id" value={task.id} />
-        <button
+        <Button
           type="submit"
+          variant="ghost"
+          size="icon-sm"
+          hue="rose"
           aria-label="Delete task"
-          className="text-fg-muted opacity-0 transition-opacity hover:text-accent-orange group-hover:opacity-100"
+          className="opacity-0 transition-opacity group-hover:opacity-100"
         >
           <Icon name="X" size={15} />
-        </button>
+        </Button>
       </form>
     </li>
   );
@@ -332,27 +195,23 @@ export function CommitComposer({
           { v: today, label: "Today" },
           { v: yesterday, label: "Yesterday" },
         ].map((o) => (
-          <button
+          <Button
             key={o.v}
-            type="button"
+            size="sm"
+            hue="blue"
+            block
+            selected={day === o.v}
             onClick={() => setDay(o.v)}
-            aria-pressed={day === o.v}
-            className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-              day === o.v ? "border-border-strong bg-card-hover text-fg" : "border-border text-fg-secondary hover:text-fg"
-            }`}
+            faceClassName="px-3 py-2 text-xs font-medium"
           >
             {o.label}
-          </button>
+          </Button>
         ))}
       </div>
-      <button
-        type="submit"
-        disabled={pending}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-blue to-accent-cyan px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-      >
+      <Button type="submit" variant="primary" hue="blue" block loading={pending}>
         <Icon name="PenLine" size={16} />
         {pending ? "Logging…" : `Log ${day === today ? "today" : "yesterday"}'s update`}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -451,21 +310,21 @@ function CommitEditor({
       <input type="hidden" name="project_id" value={projectId} />
       <textarea name="note" rows={3} required maxLength={2000} defaultValue={note} className={`${inputCls} resize-none`} />
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onDone}
-          className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-        >
+        <Button size="sm" onClick={onDone} faceClassName="px-3 py-2 text-xs font-medium">
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
-          disabled={pending}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-blue to-accent-cyan px-3 py-2 text-xs font-semibold text-white transition-opacity disabled:opacity-60"
+          variant="primary"
+          hue="blue"
+          size="sm"
+          loading={pending}
+          className="flex-1"
+          faceClassName="px-3 py-2 text-xs font-semibold"
         >
           <Icon name="Check" size={14} />
           {pending ? "Saving…" : "Save update"}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -523,9 +382,9 @@ function ProjectRenameForm({ project, onDone }: { project: Project; onDone: () =
       <input type="hidden" name="project_id" value={project.id} />
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">Edit project</span>
-        <button type="button" onClick={onDone} className="text-fg-muted hover:text-fg" aria-label="Close">
+        <Button variant="ghost" size="icon-sm" hue="rose" onClick={onDone} aria-label="Close">
           <Icon name="X" size={16} />
-        </button>
+        </Button>
       </div>
 
       <div>
@@ -543,23 +402,19 @@ function ProjectRenameForm({ project, onDone }: { project: Project; onDone: () =
         <input name="target_date" type="date" defaultValue={project.targetDate ?? ""} className={inputCls} />
       </div>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-xl bg-gradient-to-r from-accent-blue to-accent-cyan px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-      >
+      <Button type="submit" variant="primary" hue="blue" block loading={pending}>
         {pending ? "Saving…" : "Save changes"}
-      </button>
+      </Button>
     </form>
   );
 }
 
 // ---- Phase H: Status control ------------------------------------------------
 
-const STATUS_OPTIONS: { value: Project["status"]; label: string; icon: string; accent: string }[] = [
-  { value: "planned", label: "Planned", icon: "Clock", accent: "var(--fg-muted)" },
-  { value: "ongoing", label: "In progress", icon: "Loader", accent: "var(--accent-blue)" },
-  { value: "completed", label: "Completed", icon: "CheckCircle2", accent: "var(--accent-mint)" },
+const STATUS_OPTIONS: { value: Project["status"]; label: string; icon: string; accent: string; hue: HueName }[] = [
+  { value: "planned", label: "Planned", icon: "Clock", accent: "var(--fg-muted)", hue: "blue" },
+  { value: "ongoing", label: "In progress", icon: "Loader", accent: "var(--accent-blue)", hue: "blue" },
+  { value: "completed", label: "Completed", icon: "CheckCircle2", accent: "var(--accent-mint)", hue: "mint" },
 ];
 
 export function StatusControl({ project }: { project: Project }) {
@@ -583,20 +438,17 @@ export function StatusControl({ project }: { project: Project }) {
   return (
     <div className="flex gap-1.5">
       {STATUS_OPTIONS.map((opt) => (
-        <button
+        <Button
           key={opt.value}
-          type="button"
+          size="sm"
+          hue={opt.hue}
+          selected={current === opt.value}
           onClick={() => change(opt.value)}
-          aria-pressed={current === opt.value}
-          className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-            current === opt.value
-              ? "border-border-strong bg-card-hover text-fg"
-              : "border-border text-fg-secondary hover:text-fg"
-          }`}
+          faceClassName="gap-1.5 px-3 py-2 text-xs font-medium"
         >
           <Icon name={opt.icon} size={13} style={current === opt.value ? { color: opt.accent } : undefined} />
           {opt.label}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -624,7 +476,7 @@ export function TagEditor({ project }: { project: Project }) {
   };
 
   const toggle = (tag: string) => {
-    const next = tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag].slice(0, 10);
+    const next = tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag].slice(0, MAX_PROJECT_TAGS);
     save(next);
   };
 
@@ -636,13 +488,16 @@ export function TagEditor({ project }: { project: Project }) {
             {tag}
           </span>
         ))}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          hue="cyan"
           onClick={() => setEditing(true)}
-          className="rounded-md bg-card-hover px-2 py-0.5 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
+          className="[--rv-pad:2px]"
+          faceClassName="gap-1 px-2 py-0.5 text-xs font-medium"
         >
-          <Icon name="Plus" size={12} className="inline" /> {tags.length ? "Edit" : "Add tags"}
-        </button>
+          <Icon name="Plus" size={12} /> {tags.length ? "Edit" : "Add tags"}
+        </Button>
       </div>
     );
   }
@@ -650,28 +505,22 @@ export function TagEditor({ project }: { project: Project }) {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
-        {PRESET_TAGS.map((tag) => (
-          <button
+        {PROJECT_PRESET_TAGS.map((tag) => (
+          <Button
             key={tag}
-            type="button"
+            size="sm"
+            hue="cyan"
+            selected={tags.includes(tag)}
             onClick={() => toggle(tag)}
-            className={`rounded-lg px-2 py-1 text-[11px] font-medium transition-colors ${
-              tags.includes(tag)
-                ? "bg-accent-blue/20 text-accent-cyan"
-                : "bg-card-hover text-fg-secondary hover:text-fg"
-            }`}
+            faceClassName="px-2 py-1 text-[11px] font-medium"
           >
             {tag}
-          </button>
+          </Button>
         ))}
       </div>
-      <button
-        type="button"
-        onClick={() => setEditing(false)}
-        className="text-xs font-medium text-fg-secondary hover:text-fg"
-      >
+      <Button variant="ghost" size="sm" hue="cyan" onClick={() => setEditing(false)}>
         Done
-      </button>
+      </Button>
     </div>
   );
 }
@@ -742,16 +591,15 @@ export function MilestoneGenerator({
 
   if (state === "idle") {
     return (
-      <button
-        type="button"
-        onClick={generate}
-        disabled={!aiReady && !hasIdea}
-        className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg disabled:opacity-50"
-      >
-        <Icon name="Sparkles" size={16} style={{ color: "var(--accent-purple)" }} />
-        Generate milestones
+      <div className="mt-3 flex items-center gap-2">
+        <GenerateButton
+          label="Generate milestones"
+          activeLabel="Generating"
+          onClick={generate}
+          disabled={!aiReady && !hasIdea}
+        />
         {!aiReady && <span className="text-[10px] text-fg-muted">(demo)</span>}
-      </button>
+      </div>
     );
   }
 
@@ -778,33 +626,26 @@ export function MilestoneGenerator({
             />
             {s.detail && <p className="mt-0.5 text-xs text-fg-muted">{s.detail}</p>}
           </div>
-          <button
-            type="button"
-            onClick={() => remove(i)}
-            className="shrink-0 text-fg-muted transition-colors hover:text-accent-orange"
-            aria-label="Remove"
-          >
+          <Button variant="ghost" size="icon-sm" hue="rose" onClick={() => remove(i)} aria-label="Remove">
             <Icon name="X" size={14} />
-          </button>
+          </Button>
         </div>
       ))}
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => { setState("idle"); setSuggestions([]); }}
-          className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:text-fg"
-        >
+        <Button size="sm" onClick={() => { setState("idle"); setSuggestions([]); }} faceClassName="px-3 py-2 text-xs font-medium">
           Cancel
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
           onClick={apply}
           disabled={!suggestions.some((s) => s.title.trim())}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-2.5 text-xs font-semibold text-white transition-opacity disabled:opacity-60"
+          className="flex-1"
+          faceClassName="px-4 py-2 text-xs font-semibold"
         >
           <Icon name="Plus" size={14} />
           Add {suggestions.length} milestone{suggestions.length === 1 ? "" : "s"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -869,16 +710,17 @@ export function CommitMilestoneMatcher({
 
   if (state === "idle") {
     return (
-      <button
-        type="button"
-        onClick={scan}
-        disabled={!note.trim()}
-        className="flex items-center gap-1.5 text-xs font-medium text-fg-secondary transition-colors hover:text-fg disabled:opacity-50"
-      >
-        <Icon name="Sparkles" size={13} style={{ color: "var(--accent-purple)" }} />
-        Check off milestones from this update
+      <div className="flex items-center gap-2">
+        <GenerateButton
+          label="Check off milestones"
+          activeLabel="Scanning"
+          size="sm"
+          onClick={scan}
+          disabled={!note.trim()}
+          title="Check off milestones from this update"
+        />
         {!aiReady && <span className="text-[10px] text-fg-muted">(demo)</span>}
-      </button>
+      </div>
     );
   }
 
@@ -909,22 +751,21 @@ export function CommitMilestoneMatcher({
         </label>
       ))}
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => { setState("idle"); setMatches([]); }}
-          className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:text-fg"
-        >
+        <Button size="sm" onClick={() => { setState("idle"); setMatches([]); }} faceClassName="px-3 py-2 text-xs font-medium">
           Cancel
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
+          hue="mint"
+          size="sm"
           onClick={confirm}
           disabled={!matches.some((m) => m.selected)}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-mint to-accent-cyan px-3 py-2 text-xs font-semibold text-white transition-opacity disabled:opacity-60"
+          className="flex-1"
+          faceClassName="px-3 py-2 text-xs font-semibold"
         >
           <Icon name="CheckCircle2" size={14} />
           Complete {matches.filter((m) => m.selected).length}
-        </button>
+        </Button>
       </div>
     </div>
   );

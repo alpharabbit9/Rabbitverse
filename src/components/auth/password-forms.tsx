@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { AuthShell, AuthSubmit, authInputCls } from "@/components/auth/auth-shell";
+import { ButtonLink } from "@/components/ui/button";
 import type { AuthResult } from "@/app/auth/actions";
 
 const INITIAL: AuthResult = { ok: false, error: null, message: null };
@@ -107,12 +108,7 @@ export function ResetPasswordForm({
           <p className="text-sm text-fg-secondary">
             This reset link has expired or was already used.
           </p>
-          <Link
-            href="/forgot-password"
-            className="inline-block rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-          >
-            Send a new link
-          </Link>
+          <ButtonLink href="/forgot-password">Send a new link</ButtonLink>
         </div>
       )}
     </AuthShell>

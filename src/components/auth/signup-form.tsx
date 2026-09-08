@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { AuthShell, AuthSubmit, GoogleIcon, authInputCls } from "@/components/auth/auth-shell";
+import { Button } from "@/components/ui/button";
 import { isInviteCodeShape, normalizeInviteCode } from "@/lib/admin/invites";
 import type { SignupMode } from "@/lib/admin/types";
 import type { AuthResult } from "@/app/auth/actions";
@@ -155,14 +156,10 @@ export function SignUpForm({
           </div>
 
           <form action={signInWithGoogle} className="space-y-2">
-            <button
-              type="submit"
-              className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-white px-4 py-3 font-medium text-[#1f1f1f] shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.99]"
-            >
-              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-black/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            <Button type="submit" size="lg" hue="blue" block faceClassName="gap-3 py-3">
               <GoogleIcon />
               Sign up with Google
-            </button>
+            </Button>
             {inviteOnly && (
               <p className="text-center text-[11px] leading-relaxed text-fg-muted">
                 Google sign-in works once your email address has been invited — a code can only be typed on the form

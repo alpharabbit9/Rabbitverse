@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useOptimistic, useRef } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { logWeight, saveHeight, setWorkoutDay, type LogResult } from "./actions";
 
 const INITIAL: LogResult = { ok: false, error: null };
@@ -41,23 +42,13 @@ export function TodayWorkoutForm({
       <input type="hidden" name="plan_label" value={planLabel} />
       <input ref={doneRef} type="hidden" name="done" value="true" />
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => submit(true)}
-          disabled={pending}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-        >
+        <Button variant="primary" onClick={() => submit(true)} loading={pending} className="flex-1">
           <Icon name="Check" size={16} />
           Mark {planLabel || "workout"} done
-        </button>
-        <button
-          type="button"
-          onClick={() => submit(false)}
-          disabled={pending}
-          className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg disabled:opacity-60"
-        >
+        </Button>
+        <Button onClick={() => submit(false)} disabled={pending}>
           Rest
-        </button>
+        </Button>
       </div>
       {optimisticStatus && (
         <p className="text-xs text-fg-muted">
@@ -111,13 +102,9 @@ export function WeightForm({ latestWeight }: { latestWeight?: number }) {
           className="w-full rounded-xl border border-border bg-card-hover/60 px-3 py-2.5 text-sm outline-none focus:border-border-strong"
         />
       </label>
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-      >
+      <Button type="submit" variant="primary" loading={pending}>
         {pending ? "Saving…" : "Log"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -147,13 +134,9 @@ export function HeightForm({ heightCm }: { heightCm: number | null }) {
           className="w-full rounded-xl border border-border bg-card-hover/60 px-3 py-2.5 text-sm outline-none focus:border-border-strong"
         />
       </label>
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg disabled:opacity-60"
-      >
+      <Button type="submit" loading={pending}>
         {pending ? "Saving…" : heightCm ? "Update" : "Save"}
-      </button>
+      </Button>
     </form>
   );
 }

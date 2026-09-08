@@ -58,7 +58,7 @@ export function StatCard({
 
       <div className="mt-3 flex items-end justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
-          <div className="truncate text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">{value}</div>
+          <div className="number-display truncate text-2xl font-bold sm:text-3xl">{value}</div>
           {toneLabel && (
             <div className="mt-0.5 truncate text-[13px] font-medium sm:text-sm" style={{ color: toneColor }}>
               {toneLabel}

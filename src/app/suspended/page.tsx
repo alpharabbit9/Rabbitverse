@@ -1,4 +1,5 @@
 import { AuthShell } from "@/components/auth/auth-shell";
+import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/auth/actions";
 
 /**
@@ -18,12 +19,7 @@ export default function SuspendedPage() {
             that arrived mid-session still holds a valid session cookie, and
             leaving it live would be an odd half-state. */}
         <form action={signOut}>
-          <button
-            type="submit"
-            className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-          >
-            Back to sign in
-          </button>
+          <Button type="submit">Back to sign in</Button>
         </form>
       </div>
     </AuthShell>

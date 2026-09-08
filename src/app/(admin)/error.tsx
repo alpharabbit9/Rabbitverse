@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 
 /*
   The admin group's error boundary. No mascot here — `(app)/error.tsx` shows the
@@ -34,12 +35,9 @@ export default function AdminError({
         <p className="text-sm text-fg-secondary">{error.message || "Something went wrong reading the roster."}</p>
         {error.digest && <p className="font-mono text-xs text-fg-muted">Digest: {error.digest}</p>}
       </div>
-      <button
-        onClick={() => unstable_retry()}
-        className="rounded-xl border border-border bg-card-solid px-6 py-2.5 text-sm font-medium transition-colors hover:border-border-strong hover:bg-card-hover"
-      >
+      <Button size="lg" onClick={() => unstable_retry()} faceClassName="px-6">
         Try again
-      </button>
+      </Button>
     </div>
   );
 }

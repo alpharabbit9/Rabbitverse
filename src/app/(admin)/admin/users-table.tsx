@@ -14,6 +14,7 @@ import {
   type SortDir,
   type SortKey,
 } from "@/lib/admin/types";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { UserActions } from "./user-actions";
 
@@ -143,6 +144,11 @@ export function UsersTable({
   const headerCls =
     "sticky top-0 z-10 select-none whitespace-nowrap bg-card-solid px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-fg-muted";
 
+  // A column header is a button, but it has to sit flush in the <th> — hence a
+  // hairline halo and a face with no padding of its own.
+  const sortBtn = "[--rv-pad:2px] -m-0.5";
+  const sortFace = "gap-1 px-1 py-0.5 text-[11px] font-semibold uppercase tracking-wide";
+
   const page = Math.floor(offset / ADMIN_PAGE_SIZE);
   const lastPage = Math.max(0, Math.ceil(total / ADMIN_PAGE_SIZE) - 1);
 
@@ -165,27 +171,24 @@ export function UsersTable({
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-fg-muted"
           />
           {search && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              hue="rose"
               onClick={() => {
                 setQuery("");
                 go(href({ q: "", page: 0 }));
               }}
               aria-label="Clear search"
-              className="shrink-0 text-fg-muted transition-colors hover:text-fg"
             >
               <Icon name="X" size={14} />
-            </button>
+            </Button>
           )}
         </form>
 
-        <button
-          type="button"
-          onClick={() => setShowAllCounts((v) => !v)}
-          className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
-        >
+        <Button size="sm" selected={showAllCounts} onClick={() => setShowAllCounts((v) => !v)} faceClassName="px-3 py-2 text-xs font-medium">
           {showAllCounts ? "Fewer columns" : "All ten counts"}
-        </button>
+        </Button>
       </div>
 
       <div className={cn("overflow-x-auto transition-opacity", pending && "opacity-60")}>
@@ -194,51 +197,41 @@ export function UsersTable({
             <tr className="border-b border-border">
               {(["email", "status", "role", "created_at"] as RosterSortKey[]).map((key) => (
                 <th key={key} scope="col" className={headerCls}>
-                  <button
-                    type="button"
-                    onClick={() => onSort(key)}
-                    className="flex items-center gap-1 transition-colors hover:text-fg"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => onSort(key)} className={sortBtn} faceClassName={sortFace}>
                     {ROSTER_LABELS[key]}
                     <SortCaret active={!pageSort && sort === key} dir={dir} />
-                  </button>
+                  </Button>
                 </th>
               ))}
 
               <th scope="col" className={headerCls}>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => onSort("last_active")}
                   title="Sorts this page only"
-                  className="flex items-center gap-1 transition-colors hover:text-fg"
+                  className={sortBtn}
+                  faceClassName={sortFace}
                 >
                   Last active
                   <SortCaret active={pageSort?.key === "last_active"} dir={pageSort?.dir ?? "desc"} />
-                </button>
+                </Button>
               </th>
 
               {columns.map((c) => (
                 <th key={c.key} scope="col" className={cn(headerCls, "text-right")} title={`${c.title} · sorts this page only`}>
-                  <button
-                    type="button"
-                    onClick={() => onSort(c.key)}
-                    className="ml-auto flex items-center gap-1 transition-colors hover:text-fg"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => onSort(c.key)} className={cn(sortBtn, "ml-auto")} faceClassName={sortFace}>
                     {c.label}
                     <SortCaret active={pageSort?.key === c.key} dir={pageSort?.dir ?? "desc"} />
-                  </button>
+                  </Button>
                 </th>
               ))}
 
               <th scope="col" className={cn(headerCls, "text-right")} title="Every row this account owns · sorts this page only">
-                <button
-                  type="button"
-                  onClick={() => onSort("total")}
-                  className="ml-auto flex items-center gap-1 transition-colors hover:text-fg"
-                >
+                <Button variant="ghost" size="sm" onClick={() => onSort("total")} className={cn(sortBtn, "ml-auto")} faceClassName={sortFace}>
                   Rows
                   <SortCaret active={pageSort?.key === "total"} dir={pageSort?.dir ?? "desc"} />
-                </button>
+                </Button>
               </th>
 
               <th scope="col" className={cn(headerCls, "w-10 text-right")}>
@@ -299,22 +292,12 @@ export function UsersTable({
           {pageSort && <span className="ml-2 text-fg-muted/80">· sorted on this page only</span>}
         </span>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={page <= 0}
-            onClick={() => go(href({ page: page - 1 }))}
-            className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 transition-colors enabled:hover:border-border-strong enabled:hover:text-fg disabled:opacity-40"
-          >
+          <Button size="sm" disabled={page <= 0} onClick={() => go(href({ page: page - 1 }))} faceClassName="gap-1 px-2.5 py-1.5">
             <Icon name="ChevronLeft" size={13} /> Prev
-          </button>
-          <button
-            type="button"
-            disabled={page >= lastPage}
-            onClick={() => go(href({ page: page + 1 }))}
-            className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 transition-colors enabled:hover:border-border-strong enabled:hover:text-fg disabled:opacity-40"
-          >
+          </Button>
+          <Button size="sm" disabled={page >= lastPage} onClick={() => go(href({ page: page + 1 }))} faceClassName="gap-1 px-2.5 py-1.5">
             Next <Icon name="ChevronRight" size={13} />
-          </button>
+          </Button>
         </div>
       </div>
     </section>

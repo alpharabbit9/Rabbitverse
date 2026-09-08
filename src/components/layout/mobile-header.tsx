@@ -13,7 +13,7 @@ export function MobileHeader() {
         <Link href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-mark.png" alt="Rabbit Verse" className="size-9 rounded-xl object-cover shadow-[0_4px_14px_-4px_rgba(91,124,250,0.55)] ring-1 ring-white/10" />
-          <span className="font-display text-[18px] font-semibold tracking-tight">Rabbit Verse</span>
+          <span className="heading-display text-[18px] font-semibold">Rabbit Verse</span>
         </Link>
         <ThemeOrb size={28} />
       </header>

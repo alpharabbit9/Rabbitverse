@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
+import { Button } from "@/components/ui/button";
 
 /*
   The chrome every auth screen shares — drifting aurora, the logo mark, the
@@ -62,7 +63,7 @@ export function AuthShell({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="font-display mt-6 bg-gradient-to-r from-fg via-fg to-accent-purple bg-clip-text text-4xl font-semibold tracking-tight text-transparent"
+          className="heading-display mt-6 bg-gradient-to-r from-fg via-fg to-accent-purple bg-clip-text text-4xl font-semibold text-transparent"
         >
           Rabbit Verse
         </motion.h1>
@@ -176,16 +177,11 @@ export function GoogleIcon() {
   );
 }
 
-/** The gradient primary button every auth form submits with. */
+/** The primary button every auth form submits with. */
 export function AuthSubmit({ pending, children }: { pending: boolean; children: React.ReactNode }) {
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-accent-purple to-accent-blue px-4 py-3 font-medium text-white shadow-[0_10px_28px_-8px_rgba(139,92,246,0.7)] transition-transform hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60 disabled:hover:scale-100"
-    >
-      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-      <span className="relative">{pending ? "One moment…" : children}</span>
-    </button>
+    <Button type="submit" variant="primary" size="lg" block loading={pending} faceClassName="py-3">
+      {pending ? "One moment…" : children}
+    </Button>
   );
 }

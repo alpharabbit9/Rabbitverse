@@ -35,7 +35,7 @@ export function SectionCard({
         </span>
       </div>
       <div>
-        <div className="text-xl font-bold tracking-tight">{primary}</div>
+        <div className="number-display text-xl font-bold">{primary}</div>
         <div className="text-xs text-fg-muted">{sub}</div>
       </div>
       <div className="opacity-90">

@@ -1,14 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
+// Functional UI face — navigation, body, buttons, data, labels. Highly legible variable sans.
+const jakarta = Plus_Jakarta_Sans({ variable: "--font-sans", subsets: ["latin"], display: "swap" });
 const geistMono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
-// Distinctive geometric display sans — used only for the "Rabbit Verse" brand wordmark.
-const spaceGrotesk = Space_Grotesk({ variable: "--font-display", subsets: ["latin"], weight: ["500", "600", "700"] });
 
 export const metadata: Metadata = {
   title: "Rabbit Verse — Forge Your Legacy",
@@ -31,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${jakarta.variable} ${geistMono.variable}`}>
       <body className="min-h-dvh antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} themes={["light", "dark"]}>
           <SmoothScroll />

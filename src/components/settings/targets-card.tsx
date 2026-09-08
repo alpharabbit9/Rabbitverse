@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Icon } from "@/components/icon";
+import { Button } from "@/components/ui/button";
 import { useCurrencySymbol } from "@/components/locale-provider";
 import { cn } from "@/lib/utils";
 import { DEFAULT_TARGETS, TARGET_LIMITS, type Targets, coerceTarget } from "@/lib/targets";
@@ -160,14 +161,9 @@ export function TargetsCard({ initial }: { initial: Targets }) {
         );
       })}
 
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={saving || saved}
-        className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-40"
-      >
+      <Button variant="primary" block onClick={onSave} disabled={saved} loading={saving}>
         {saving ? "Saving…" : saved ? "Targets saved" : "Save targets"}
-      </button>
+      </Button>
     </div>
   );
 }

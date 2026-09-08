@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useMascot } from "@/components/mascot/provider";
+import { Button } from "@/components/ui/button";
 
 /*
   The (app) error boundary — anything a page throws lands here, inside the shell,
@@ -35,12 +36,9 @@ export default function Error({
         </p>
         {error.digest && <p className="font-mono text-xs text-fg-muted">Digest: {error.digest}</p>}
       </div>
-      <button
-        onClick={() => unstable_retry()}
-        className="rounded-xl border border-border bg-card-solid px-6 py-2.5 text-sm font-medium transition-colors hover:border-border-strong hover:bg-card-hover"
-      >
+      <Button size="lg" onClick={() => unstable_retry()} faceClassName="px-6">
         Try again
-      </button>
+      </Button>
     </div>
   );
 }
